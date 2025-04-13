@@ -1,3 +1,0 @@
-/home/weoweo/CSCE441-Graphics/RaytracingImplementation/build/CMakeFiles/A6.dir
-/home/weoweo/CSCE441-Graphics/RaytracingImplementation/build/CMakeFiles/edit_cache.dir
-/home/weoweo/CSCE441-Graphics/RaytracingImplementation/build/CMakeFiles/rebuild_cache.dir

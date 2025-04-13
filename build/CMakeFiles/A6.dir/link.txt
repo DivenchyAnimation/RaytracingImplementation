@@ -1,1 +1,0 @@
-/usr/bin/c++  -g -Wall -pedantic CMakeFiles/A6.dir/src/BoundingBox.cpp.o CMakeFiles/A6.dir/src/Image.cpp.o CMakeFiles/A6.dir/src/Routines.cpp.o CMakeFiles/A6.dir/src/Triangle.cpp.o CMakeFiles/A6.dir/src/common.cpp.o CMakeFiles/A6.dir/src/main.cpp.o CMakeFiles/A6.dir/src/pch.cpp.o -o A6
