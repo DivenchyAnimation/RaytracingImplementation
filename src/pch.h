@@ -15,3 +15,9 @@
 #include "glm/matrix.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include "Camera.h"
+#include "Light.h"
+#include "Material.h"
+#include "Ray.h"
+#include "Shape.h"

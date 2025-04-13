@@ -1,27 +1,6 @@
-#include "Triangle.h"
-#include "pch.h"
+glm::vec3 genRayForPixel(int x, int y, int width, int height, float fov);
+glm::vec3 computeIntersection(const Ray &ray, const std::shared_ptr<Shape> &shape, const Light &light);
+void genPixelsSceneOne(Image &image, int width, int height, std::shared_ptr<Camera> &camPos, const std::shared_ptr<Shape> &shape,
+                       const Light &light, std::string FILENAME);
 
-int taskOne(std::vector<float> &posBuf, std::vector<float> &norBuf,
-            std::vector<float> &zBuf, int width, int height,
-            std::string outfile);
-int taskTwo(std::vector<float> &posBuf, std::vector<float> &norBuf,
-            std::vector<float> &zBuf, int width, int height,
-            std::string outfile);
-int taskThree(std::vector<float> &posBuf, std::vector<float> &norBuf,
-              std::vector<float> &zBuf, int width, int height,
-              std::string outfile);
-int taskFour(std::vector<float> &posBuf, std::vector<float> &norBuf,
-             std::vector<float> &zBuf, int width, int height,
-             std::string outfile);
-int taskFive(std::vector<float> &posBuf, std::vector<float> &norBuf,
-             std::vector<float> &zBuf, int width, int height,
-             std::string outfile);
-int taskSix(std::vector<float> &posBuf, std::vector<float> &norBuf,
-            std::vector<float> &zBuf, int width, int height,
-            std::string outfile);
-int taskSeven(std::vector<float> &posBuf, std::vector<float> &norBuf,
-              std::vector<float> &zBuf, int width, int height,
-              std::string outfile);
-int taskEight(std::vector<float> &posBuf, std::vector<float> &norBuf,
-              std::vector<float> &zBuf, int width, int height,
-              std::string outfile);
+void taskOne(int width, int height, std::shared_ptr<Camera> &cam, std::string FILENAME);
