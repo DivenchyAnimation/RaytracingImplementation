@@ -16,8 +16,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Camera.h"
-#include "Light.h"
+// clang-format off
 #include "Material.h"
-#include "Ray.h"
 #include "Shape.h"
+#include "Camera.h"
+#include "Hit.h"
+#include "Light.h"
+#include "Ray.h"

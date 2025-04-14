@@ -1,12 +1,16 @@
 // src/main.cpp
 #include "Routines.h"
+#include "pch.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "tiny_obj_loader.h"
+// #define TINYOBJLOADER_IMPLEMENTATION
+// #include "tiny_obj_loader.h"
 
 using namespace std;
 
 shared_ptr<Camera> camera = make_shared<Camera>();
+vector<shared_ptr<Material>> materials;
+vector<shared_ptr<Hit>> hits;
+vector<shared_ptr<Shape>> shapes;
 vector<glm::vec3> rays;
 
 int SCENE;
@@ -26,14 +30,17 @@ int main(int argc, char **argv) {
   int height = width;
   char *FILENAME = argv[3];
 
+  // Init materials
+  initMaterials(materials);
+
   // Load geometry
   vector<float> posBuf; // list of vertex positions
   vector<float> zBuf;   // list of z-vals for image
   vector<float> norBuf; // list of vertex normals
   vector<float> texBuf; // list of vertex texture coords
-  tinyobj::attrib_t attrib;
-  std::vector<tinyobj::shape_t> shapes;
-  std::vector<tinyobj::material_t> materials;
+  // tinyobj::attrib_t attrib;
+  // std::vector<tinyobj::shape_t> shapes;
+  // std::vector<tinyobj::material_t> materials;
   string warnStr, errStr;
 
   // Load the OBJ file
@@ -79,9 +86,10 @@ int main(int argc, char **argv) {
   // Choose operation based on task
   switch (SCENE) {
   case 1:
-    taskOne(width, height, camera, FILENAME);
+    taskOne(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   case 2:
+    taskOne(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   case 3:
     break;
