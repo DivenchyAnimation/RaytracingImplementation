@@ -86,12 +86,13 @@ int main(int argc, char **argv) {
   // Choose operation based on task
   switch (SCENE) {
   case 1:
-    taskOne(width, height, materials, shapes, hits, camera, FILENAME);
+    sceneOne(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   case 2:
-    taskOne(width, height, materials, shapes, hits, camera, FILENAME);
+    sceneOne(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   case 3:
+    sceneThree(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   case 4:
     break;
