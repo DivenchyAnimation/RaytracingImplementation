@@ -1,11 +1,12 @@
 void initMaterials(std::vector<std::shared_ptr<Material>> &materials);
 glm::vec3 genRayForPixel(int x, int y, int width, int height, float fov);
+bool isInShadow(std::shared_ptr<Hit> nearestHit, const Light &light, const std::vector<std::shared_ptr<Shape>> &shapes);
+glm::vec3 calcLightContribution(const Light &light, std::shared_ptr<Hit> nearestHit, Ray &ray,
+                                const std::vector<std::shared_ptr<Shape>> &shapes);
 std::shared_ptr<Hit> computeIntersectionSphere(const Ray &ray, const std::shared_ptr<Shape> &shape, const glm::mat4 modelMat,
                                                const glm::mat4 modelMatInv, const std::vector<Light> &lights);
 std::shared_ptr<Hit> computeIntersectionPlane(const Ray &ray, const std::shared_ptr<Shape> &shape, const glm::mat4 modelMat,
                                               const glm::mat4 modelMatInv, const std::vector<Light> &lights);
-bool isInShadow(std::shared_ptr<Hit> nearestHit, const std::vector<Light> &lights,
-                const std::vector<std::shared_ptr<Shape>> &shapes);
 void genScenePixels(Image &image, int width, int height, std::shared_ptr<Camera> &camPos,
                     const std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
                     const std::vector<Light> &lights, std::string FILENAME);

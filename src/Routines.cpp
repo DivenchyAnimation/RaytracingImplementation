@@ -8,30 +8,26 @@ using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt, gl
 // Helper function
 float clamp(float x, float minVal = 0.0f, float maxVal = 1.0f) { return std::max(minVal, std::min(x, maxVal)); }
 
-vec3 calcLightContribution(const vector<Light> lights, vec3 P, vec3 N, shared_ptr<Shape> shape, Ray ray) {
-  glm::vec3 color = shape->getMaterial()->getMaterialKA();
-  for (const Light &light : lights) {
-    // Directin of light
-    vec3 L = glm::normalize(light.pos - P);
+vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray ray, const vector<shared_ptr<Shape>> &shapes) {
+  bool isOccluded = isInShadow(nearestHit, light, shapes);
 
-    // Diffuse shading
-    float diff = std::max(glm::dot(N, L), 0.0f);
-    glm::vec3 diffuse = light.intensity * shape->getMaterial()->getMaterialKD() * diff;
+  // For now, use binary shadowing.
+  float shadowFactor = isOccluded ? 0.0f : 1.0f;
+  shared_ptr<Shape> shape = nearestHit->collisionShape;
 
-    // Specular shading (Phong reflection).
-    glm::vec3 V = glm::normalize(ray.rayOrigin - P); // View direction.
-    glm::vec3 R = glm::reflect(-L, N);
-    float spec = pow(std::max(glm::dot(V, R), 0.0f), shape->getMaterial()->getMaterialS());
-    glm::vec3 specular = light.intensity * shape->getMaterial()->getMaterialKS() * spec;
+  // 2. Compute diffuse shading.
+  vec3 L = glm::normalize(light.pos - nearestHit->x);
+  float diff = std::max(glm::dot(nearestHit->n, L), 0.0f);
+  vec3 diffuse = light.intensity * shape->getMaterial()->getMaterialKD() * diff;
 
-    // Add contribution to color
-    color += specular + diffuse;
-  }
-  // Clamp the color components.
-  color.r = clamp(color.r);
-  color.g = clamp(color.g);
-  color.b = clamp(color.b);
-  return color;
+  // 3. Compute specular shading (Phong model).
+  vec3 V = glm::normalize(ray.rayOrigin - nearestHit->x); // View direction.
+  vec3 R = glm::reflect(-L, nearestHit->n);               // Reflection direction.
+  float spec = pow(std::max(glm::dot(V, R), 0.0f), shape->getMaterial()->getMaterialS());
+  vec3 specular = light.intensity * shape->getMaterial()->getMaterialKS() * spec;
+
+  // 4. Return the light's contribution scaled by the shadow factor.
+  return shadowFactor * (diffuse + specular);
 }
 
 void initMaterials(std::vector<std::shared_ptr<Material>> &materials) {
@@ -127,7 +123,7 @@ shared_ptr<Hit> computeIntersectionSphere(const Ray &ray, const shared_ptr<Shape
   hit->n = N;
 
   // Add all lights contribution to the color
-  hit->color = calcLightContribution(lights, P, N, shape, ray);
+  // hit->color = calcLightContribution(lights, P, N, shape, ray);
   hit->collision = true;
 
   return hit;
@@ -154,42 +150,42 @@ shared_ptr<Hit> computeIntersectionPlane(const Ray &ray, const shared_ptr<Shape>
       hit->n = N; // constant normal for an infinite plane
       hit->collision = true;
 
-      hit->color = calcLightContribution(lights, P, N, shape, ray);
+      // hit->color = calcLightContribution(lights, P, N, shape, ray);
     }
   }
   return hit;
 }
 
-bool isInShadow(shared_ptr<Hit> nearestHit, const vector<Light> &lights, const vector<shared_ptr<Shape>> &shapes) {
+// Returns if light is occluded
+bool isInShadow(shared_ptr<Hit> nearestHit, const Light &light, const vector<shared_ptr<Shape>> &shapes) {
 
   // Shadow test for each light
   float epsilon = 0.001f;
   vec3 shadowOrigin = nearestHit->x + nearestHit->n * epsilon;
 
-  for (const Light &light : lights) {
-    Ray shadowRay(shadowOrigin, glm::normalize(light.pos - shadowOrigin));
-    float lightDistance = glm::length(light.pos - shadowOrigin);
+  Ray shadowRay(shadowOrigin, glm::normalize(light.pos - shadowOrigin));
+  float lightDistance = glm::length(light.pos - shadowOrigin);
 
-    for (shared_ptr<Shape> shape : shapes) {
-      if (nearestHit->collisionShape == shape) {
-        continue; // Don't double count shape that caused initial hit
-      }
-      // Create Model matrix and apply transformations
-      mat4 modelMat = glm::translate(mat4(1.0f), shape->getPosition());
-      modelMat = glm::scale(modelMat, shape->getScale());
+  for (shared_ptr<Shape> shape : shapes) {
+    if (nearestHit->collisionShape == shape) {
+      continue; // Don't double count shape that caused initial hit
+    }
+    // Create Model matrix and apply transformations
+    mat4 modelMat = glm::translate(mat4(1.0f), shape->getPosition());
+    modelMat = glm::scale(modelMat, shape->getScale());
 
-      // Obatain inv so that ray is in object space
-      mat4 modelMatInv = glm::inverse(modelMat);
-      shared_ptr<Hit> shadowHit;
-      if (shape->getType() == ShapeType::SPHERE || shape->getType() == ShapeType::ELLIPSOID) {
-        shadowHit = computeIntersectionSphere(shadowRay, shape, modelMat, modelMatInv, lights);
-      }
-      if (shape->getType() == ShapeType::PLANE) {
-        shadowHit = computeIntersectionPlane(shadowRay, shape, modelMat, modelMatInv, lights);
-      }
-      if ((shadowHit->collision) && (shadowHit->t > 0) && (shadowHit->t < lightDistance)) {
-        return true;
-      }
+    // Obatain inv so that ray is in object space
+    mat4 modelMatInv = glm::inverse(modelMat);
+    shared_ptr<Hit> shadowHit;
+    if (shape->getType() == ShapeType::SPHERE || shape->getType() == ShapeType::ELLIPSOID) {
+      shadowHit = computeIntersectionSphere(shadowRay, shape, modelMat, modelMatInv, vector<Light>{light});
+    }
+    if (shape->getType() == ShapeType::PLANE) {
+      shadowHit = computeIntersectionPlane(shadowRay, shape, modelMat, modelMatInv, vector<Light>{light});
+    }
+    // If a collision occurs and the distance is less than the light's, then this light is occluded.
+    if (shadowHit && shadowHit->collision && (shadowHit->t > 0) && (shadowHit->t < lightDistance)) {
+      return true;
     }
   }
   return false;
@@ -231,9 +227,13 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
       }
 
       // If hit exists, do shadow test
-      if ((nearestHit != nullptr) && isInShadow(nearestHit, lights, shapes)) {
-        // If in shadow, set color to black
-        finalColor = vec3(0.1f, 0.1f, 0.1f);
+      if ((nearestHit != nullptr)) {
+        // init color to ambient, then add light contributions
+        vec3 totalLight = nearestHit->collisionShape->getMaterial()->getMaterialKA();
+        for (const Light &light : lights) {
+          totalLight += calcLightContribution(light, nearestHit, Ray(camPos->getPosition(), rayDir), shapes);
+        }
+        finalColor = totalLight;
       }
 
       // Convert color components from [0,1] to [0,255].
