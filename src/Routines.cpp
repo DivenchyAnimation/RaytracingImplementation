@@ -220,7 +220,6 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
         }
         if (curHit->collision && curHit->t < nearestToCamT) {
           nearestToCamT = curHit->t;
-          finalColor = curHit->color;
           curHit->collisionShape = shape;
           nearestHit = curHit;
         }
@@ -237,6 +236,11 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
       }
 
       // Convert color components from [0,1] to [0,255].
+
+      finalColor.r = clamp(finalColor.r);
+      finalColor.g = clamp(finalColor.g);
+      finalColor.b = clamp(finalColor.b);
+
       unsigned char rVal = static_cast<unsigned char>(finalColor.r * 255);
       unsigned char gVal = static_cast<unsigned char>(finalColor.g * 255);
       unsigned char bVal = static_cast<unsigned char>(finalColor.b * 255);

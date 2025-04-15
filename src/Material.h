@@ -1,7 +1,3 @@
-// clang-format off
-#include "Camera.h"
-// clang-format on
-
 class Material {
 private:
   glm::vec3 ka; // ambient
@@ -16,8 +12,8 @@ public:
   glm::vec3 getMaterialKA();
   glm::vec3 getMaterialKD();
   glm::vec3 getMaterialKS();
+  float getMaterialS();
   void setMaterialKA(glm::vec3 ka) { this->ka = ka; }
   void setMaterialKD(glm::vec3 kd) { this->kd = kd; }
   void setMaterialKS(glm::vec3 ks) { this->ks = ks; }
-  float getMaterialS();
 };
