@@ -22,8 +22,8 @@ vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray r
 
   // 3. Compute specular shading (Phong model).
   vec3 V = glm::normalize(ray.rayOrigin - nearestHit->x); // View direction.
-  vec3 R = glm::reflect(-L, nearestHit->n);               // Reflection direction.
-  float spec = pow(std::max(glm::dot(V, R), 0.0f), shape->getMaterial()->getMaterialS());
+  vec3 H = glm::normalize(L + V);                         // Halfway vector.
+  float spec = pow(std::max(glm::dot(nearestHit->n, H), 0.0f), shape->getMaterial()->getMaterialS());
   vec3 specular = light.intensity * shape->getMaterial()->getMaterialKS() * spec;
 
   // 4. Return the light's contribution scaled by the shadow factor.
@@ -56,106 +56,6 @@ vec3 genRayForPixel(int x, int y, int width, int height, float fov) {
   return glm::normalize(vec3(u * halfWidth, v * halfHeight, -planeDistFromCam));
 }
 
-// Help from ChatGPT
-// Compute intersections of ray with shape in order to create the shading
-shared_ptr<Hit> computeIntersectionSphere(const Ray &ray, const shared_ptr<Shape> &shape, const mat4 modelMat,
-                                          const mat4 modelMatInv, const vector<Light> &lights) {
-  shared_ptr<Hit> hit = make_shared<Hit>(); // assume collision is false
-
-  // Help from ChatGPT making this model to object space transformation
-
-  // Transform ray origin into local space (use homogeneous coordinate 1)
-  glm::vec3 localOrigin = glm::vec3(modelMatInv * glm::vec4(ray.rayOrigin, 1.0f));
-
-  // Transform ray direction into local space (use homogeneous coordinate 0)
-  glm::vec3 localDirection = glm::normalize(glm::vec3(modelMatInv * glm::vec4(ray.rayDirection, 0.0f)));
-
-  // Compute quadratic equation
-  float a, b, c, discriminant;
-  vec3 oc = localOrigin;
-  a = glm::dot(localDirection, localDirection);
-  b = 2.0f * glm::dot(oc, localDirection);
-  c = glm::dot(oc, oc) - shape->getRadius() * shape->getRadius();
-  discriminant = b * b - 4 * a * c;
-
-  // If discriminant is negative, no collision with shape
-  if (discriminant < 0) {
-    return hit;
-  }
-
-  // Else, colllision so solve for t (intersections)
-  float sqrtDiscriminant = sqrt(discriminant);
-  float t = (-b - sqrtDiscriminant) / (2.0f * a);
-
-  // Behind camera, count as miss look at other t val
-  if (t < 0) {
-    t = (-b + sqrtDiscriminant) / (2.0f * a);
-  }
-  // If both neg, skip
-  if (t < 0) {
-    return hit;
-  }
-
-  // Object space ray hit
-  vec3 localHitPoint = localOrigin + t * localDirection;
-  vec3 localNormal = glm::normalize(localHitPoint); // For sphere
-
-  // World space ray hit (dividie by w to enter eye space)
-  vec4 worldHitPoint4 = modelMat * glm::vec4(localHitPoint, 1.0f);
-  vec3 worldHitPoint = glm::vec3(worldHitPoint4) / worldHitPoint4.w;
-
-  // Transform normal to world space
-  glm::mat4 invTransModel = glm::transpose(modelMatInv);
-  glm::vec4 worldNormal4 = invTransModel * glm::vec4(localNormal, 0.0f);
-  glm::vec3 worldNormal = glm::normalize(glm::vec3(worldNormal4));
-
-  // Calc t in world space
-  float t_world = glm::length(worldHitPoint - ray.rayOrigin);
-  if (glm::dot(ray.rayDirection, worldHitPoint - ray.rayOrigin) < 0.0f) {
-    t_world = -t_world;
-  }
-
-  // Ray hit
-  hit->t = t_world;
-  vec3 P = worldHitPoint; // Intersection point
-  vec3 N = worldNormal;   // Normal at intersection point
-  hit->x = P;
-  hit->n = N;
-
-  // Add all lights contribution to the color
-  // hit->color = calcLightContribution(lights, P, N, shape, ray);
-  hit->collision = true;
-
-  return hit;
-}
-
-shared_ptr<Hit> computeIntersectionPlane(const Ray &ray, const shared_ptr<Shape> &shape, const mat4 modelMat,
-                                         const mat4 modelMatInv, const vector<Light> &lights) {
-  shared_ptr<Hit> hit = make_shared<Hit>(); // assume collision is false
-
-  // For an infinite plane, we assume the plane passes through shape->getPosition()
-  vec3 planePos = shape->getPosition();
-  vec3 N = vec3(0, 1, 0);
-
-  float denom = glm::dot(N, ray.rayDirection);
-  // Avoid div by zero
-  if (fabs(denom) > 1e-6) {
-    // Compute t: distance along ray to intersection
-    float t = glm::dot(planePos - ray.rayOrigin, N) / denom;
-    if (t >= 0.0f) { // only count intersections in front of the ray
-      vec3 P = ray.rayOrigin + t * ray.rayDirection;
-
-      hit->t = t;
-      hit->x = P;
-      hit->n = N; // constant normal for an infinite plane
-      hit->collision = true;
-
-      // hit->color = calcLightContribution(lights, P, N, shape, ray);
-    }
-  }
-  return hit;
-}
-
 // Returns if light is occluded
 bool isInShadow(shared_ptr<Hit> nearestHit, const Light &light, const vector<shared_ptr<Shape>> &shapes) {
 
@@ -177,12 +77,7 @@ bool isInShadow(shared_ptr<Hit> nearestHit, const Light &light, const vector<sha
     // Obatain inv so that ray is in object space
     mat4 modelMatInv = glm::inverse(modelMat);
     shared_ptr<Hit> shadowHit;
-    if (shape->getType() == ShapeType::SPHERE || shape->getType() == ShapeType::ELLIPSOID) {
-      shadowHit = computeIntersectionSphere(shadowRay, shape, modelMat, modelMatInv, vector<Light>{light});
-    }
-    if (shape->getType() == ShapeType::PLANE) {
-      shadowHit = computeIntersectionPlane(shadowRay, shape, modelMat, modelMatInv, vector<Light>{light});
-    }
+    shadowHit = shape->computeIntersection(shadowRay, modelMat, modelMatInv, vector<Light>{light});
     // If a collision occurs and the distance is less than the light's, then this light is occluded.
     if (shadowHit && shadowHit->collision && (shadowHit->t > 0) && (shadowHit->t < lightDistance)) {
       return true;
@@ -212,12 +107,7 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
         // Obatain inv so that ray is in object space
         mat4 modelMatInv = glm::inverse(modelMat);
         shared_ptr<Hit> curHit;
-        if (shape->getType() == ShapeType::SPHERE || shape->getType() == ShapeType::ELLIPSOID) {
-          curHit = computeIntersectionSphere(Ray(camPos->getPosition(), rayDir), shape, modelMat, modelMatInv, lights);
-        }
-        if (shape->getType() == ShapeType::PLANE) {
-          curHit = computeIntersectionPlane(Ray(camPos->getPosition(), rayDir), shape, modelMat, modelMatInv, lights);
-        }
+        curHit = shape->computeIntersection(Ray(camPos->getPosition(), rayDir), modelMat, modelMatInv, lights);
         if (curHit->collision && curHit->t < nearestToCamT) {
           nearestToCamT = curHit->t;
           curHit->collisionShape = shape;
@@ -259,11 +149,10 @@ void sceneOne(int width, int height, std::vector<std::shared_ptr<Material>> mate
               std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits, std::shared_ptr<Camera> &cam,
               std::string FILENAME) {
   Image image(width, height);
-  // Shape(ShapeType type, glm::vec3 position, float radius, std::shared_ptr<Material> material)
-  shared_ptr<Shape> redSphere =
-      make_shared<Shape>(ShapeType::SPHERE, vec3(-0.5f, -1.0f, 1.0f), 1.0f, vec3(1.0f, 1.3f, 1.0f), materials[0]);
-  shared_ptr<Shape> greenSphere = make_shared<Shape>(ShapeType::SPHERE, vec3(0.5f, -1.0f, -1.0f), 1.0f, vec3(1.0f), materials[1]);
-  shared_ptr<Shape> blueSphere = make_shared<Shape>(ShapeType::SPHERE, vec3(0.0f, 1.0f, 0.0f), 1.0f, vec3(1.0f), materials[2]);
+  // Sphere(glm::vec3 position, float radius, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
+  shared_ptr<Shape> greenSphere = make_shared<Sphere>(vec3(0.5f, -1.0f, -1.0f), 1.0f, 1.0f, 0.0f, materials[1]);
+  shared_ptr<Shape> blueSphere = make_shared<Sphere>(vec3(0.0f, 1.0f, 0.0f), 1.0f, 1.0f, 0.0f, materials[2]);
   shapes.push_back(redSphere);
   shapes.push_back(greenSphere);
   shapes.push_back(blueSphere);
@@ -278,12 +167,14 @@ void sceneThree(int width, int height, std::vector<std::shared_ptr<Material>> ma
                 std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
                 std::shared_ptr<Camera> &cam, std::string FILENAME) {
   Image image(width, height);
+  // Ellipsoid(glm::vec3 position, float radius, glm::vec3 scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
   shared_ptr<Shape> redEllipsoid =
-      make_shared<Shape>(ShapeType::ELLIPSOID, vec3(0.5f, 0.0f, 0.5f), 1.0f, vec3(0.5f, 0.6f, 0.2f), materials[0]);
-  shared_ptr<Shape> greenSphere = make_shared<Shape>(ShapeType::SPHERE, vec3(-0.5f, 0.0f, -0.5f), 1.0f, vec3(1.0f), materials[1]);
+      make_shared<Ellipsoid>(vec3(0.5f, 0.0f, 0.5f), 1.0f, vec3(0.5f, 0.6f, 0.2f), 0.0f, materials[0]);
+  shared_ptr<Shape> greenSphere = make_shared<Sphere>(vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[1]);
   // Plane
+  //Plane(glm::vec3 position, glm::vec3 normal, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
   shared_ptr<Shape> plane =
-      make_shared<Shape>(vec3(0.0f, -1.0f, 0.0f), glm::normalize(vec3(0.0f, 1.0f, 0.0f)), vec3(1.0f), materials[3]);
+      make_shared<Plane>(vec3(0.0f, -1.0f, 0.0f), glm::normalize(vec3(0.0f, 1.0f, 0.0f)), 1.0f, 0.0f, materials[3]);
   shapes.push_back(redEllipsoid);
   shapes.push_back(greenSphere);
   shapes.push_back(plane);

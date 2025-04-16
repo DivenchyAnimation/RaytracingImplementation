@@ -1,4 +1,6 @@
 #pragma once
+
+class Shape;
 class Hit {
 public:
   Hit() : x(0), n(0), t(0) {}

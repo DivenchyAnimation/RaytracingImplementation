@@ -17,9 +17,12 @@
 #include <glm/gtc/type_ptr.hpp>
 
 // clang-format off
-#include "Material.h"
-#include "Shape.h"
 #include "Camera.h"
+#include "Material.h"
+#include "Ray.h"
 #include "Hit.h"
 #include "Light.h"
-#include "Ray.h"
+#include "Shape.h"
+#include "Sphere.h"
+#include "Ellipsoid.h"
+#include "Plane.h"
