@@ -11,7 +11,7 @@ public:
     this->position = position;
     this->material = material;
     this->rotationAngle = rotAngle;
-    this->radius = 1.0f;
+    this->radius = radius;
     this->scale = glm::vec3(scale);
   };
 

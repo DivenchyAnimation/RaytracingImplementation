@@ -2,7 +2,7 @@
 
 class Plane : public Shape {
 private:
-  glm::vec3 normal;
+  glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
 public:
   Plane(glm::vec3 position, glm::vec3 normal, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {

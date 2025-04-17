@@ -9,11 +9,13 @@ std::shared_ptr<Hit> computeIntersectionPlane(const Ray &ray, const std::shared_
                                               const glm::mat4 modelMatInv, const std::vector<Light> &lights);
 void genScenePixels(Image &image, int width, int height, std::shared_ptr<Camera> &camPos,
                     const std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
-                    const std::vector<Light> &lights, std::string FILENAME);
-
+                    const std::vector<Light> &lights, std::string FILENAME, int SCENE);
 void sceneOne(int width, int height, std::vector<std::shared_ptr<Material>> materials,
               std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits, std::shared_ptr<Camera> &cam,
               std::string FILENAME);
 void sceneThree(int width, int height, std::vector<std::shared_ptr<Material>> materials,
                 std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
                 std::shared_ptr<Camera> &cam, std::string FILENAME);
+void sceneReflections(int width, int height, std::vector<std::shared_ptr<Material>> materials,
+                      std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
+                      std::shared_ptr<Camera> &cam, std::string FILENAME, int SCENE);

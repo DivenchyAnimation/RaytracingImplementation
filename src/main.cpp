@@ -95,8 +95,10 @@ int main(int argc, char **argv) {
     sceneThree(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   case 4:
+    sceneReflections(width, height, materials, shapes, hits, camera, FILENAME, SCENE);
     break;
   case 5:
+    sceneReflections(width, height, materials, shapes, hits, camera, FILENAME, SCENE);
     break;
   case 6:
     break;
