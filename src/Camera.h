@@ -22,11 +22,14 @@ public:
   void setScaleFactor(float f) { sfactor = f; };
   float getFOVY() { return fovy; };
   void applyProjectionMatrix(std::shared_ptr<MatrixStack> P) const;
-  // Edited
   void applyViewMatrix(std::shared_ptr<MatrixStack> MV) const;
-  // New
-  glm::mat4 getViewMatrixFreeLook();
   glm::vec3 getPosition() const { return position; }
+  void translateCamera(glm::vec3 translation) { this->position += translation; }
+  void setFOV(float f) { this->fovy = f; }
+  void setTarget(glm::vec3 target) { this->target = target; }
+  glm::mat4 getViewMatrix() const { return glm::lookAt(position, target, worldUp); }
+  glm::vec3 getTarget() const { return target; }
+  glm::vec3 getWorldUp() const { return worldUp; }
 
 private:
   float aspect;
@@ -43,6 +46,8 @@ private:
 
   // New members
   glm::vec3 position;
+  glm::vec3 target = glm::vec3(0.0f, 0.0f, 0.0f);  // Default camera will look at origin
+  glm::vec3 worldUp = glm::vec3(0.0f, 1.0f, 0.0f); // Up vector
 };
 
 #endif

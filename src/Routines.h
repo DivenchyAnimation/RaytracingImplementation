@@ -1,5 +1,5 @@
 void initMaterials(std::vector<std::shared_ptr<Material>> &materials);
-glm::vec3 genRayForPixel(int x, int y, int width, int height, float fov);
+Ray genRayForPixel(int x, int y, int width, int height, std::shared_ptr<Camera> &cam);
 bool isInShadow(std::shared_ptr<Hit> nearestHit, const Light &light, const std::vector<std::shared_ptr<Shape>> &shapes);
 glm::vec3 calcLightContribution(const Light &light, std::shared_ptr<Hit> nearestHit, Ray &ray,
                                 const std::vector<std::shared_ptr<Shape>> &shapes);
@@ -31,3 +31,6 @@ void sceneMeshTransform(int width, int height, std::vector<std::shared_ptr<Mater
                         std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
                         std::shared_ptr<Camera> &cam, std::string FILENAME, std::vector<float> &posBuf, std::vector<float> &zBuf,
                         std::vector<float> &norBuf, std::vector<float> &texBuf);
+void sceneCameraTransform(int width, int height, std::vector<std::shared_ptr<Material>> materials,
+                          std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
+                          std::shared_ptr<Camera> &cam, std::string FILENAME);

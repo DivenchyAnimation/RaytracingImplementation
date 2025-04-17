@@ -175,16 +175,26 @@ void initMaterials(std::vector<std::shared_ptr<Material>> &materials) {
   materials.push_back(meshMat);
 }
 
-vec3 genRayForPixel(int x, int y, int width, int height, float fov) {
-  float planeDistFromCam = 1.0f;
-  float halfWidth = planeDistFromCam * tan((fov / 2.0f));
-  float halfHeight = halfWidth;
+// Help from ChatGPT adapting this for camera space
+Ray genRayForPixel(int x, int y, int width, int height, shared_ptr<Camera> &cam) {
+  float fov = cam->getFOVY();
+  float aspect = float(width) / float(height);
+  float tanY = tan(fov * 0.5f);
+  float tanX = tanY * aspect;
 
   // Help from ChatGPT
   // Map pixel (x,y) to norm coords
-  float u = ((x + 0.5f) / width) * 2.0f - 1.0f;
-  float v = ((y + 0.5f) / height) * 2.0f - 1.0f;
-  return glm::normalize(vec3(u * halfWidth, v * halfHeight, -planeDistFromCam));
+  float u = (((x + 0.5f) / width) * 2.0f - 1.0f) * tanX;
+  float v = (((y + 0.5f) / height) * 2.0f - 1.0f) * tanY;
+
+  vec3 camPos = cam->getPosition();
+  vec3 forward = glm::normalize(cam->getTarget() - camPos);
+  vec3 right = glm::normalize(glm::cross(forward, cam->getWorldUp()));
+  vec3 up = glm::cross(right, forward);
+
+  glm::vec3 rayDirWorld = glm::normalize(u * right + v * up + 1.0f * forward);
+
+  return Ray(camPos, rayDirWorld);
 }
 
 // Returns if light is occluded
@@ -222,14 +232,13 @@ bool isInShadow(shared_ptr<Hit> nearestHit, const Light &light, const vector<sha
 
 //// END OF HELPERS
 
-void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &camPos, const vector<shared_ptr<Shape>> &shapes,
+void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam, const vector<shared_ptr<Shape>> &shapes,
                     vector<shared_ptr<Hit>> &hits, const vector<Light> &lights, string FILENAME, int SCENE) {
   shared_ptr<Hit> nearestHit = make_shared<Hit>();
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       nearestHit = nullptr;
-      vec3 rayDir = genRayForPixel(x, y, width, height, camPos->getFOVY());
-      Ray ray(camPos->getPosition(), rayDir);
+      Ray ray = genRayForPixel(x, y, width, height, cam);
 
       int depth;
       if (SCENE == 4) {
@@ -258,14 +267,13 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
   std::cout << "Image written to " << FILENAME << std::endl;
 }
 
-void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &camPos, const vector<shared_ptr<Shape>> &shapes,
+void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam, const vector<shared_ptr<Shape>> &shapes,
                     vector<shared_ptr<Hit>> &hits, const vector<Light> &lights, string FILENAME, int SCENE, mat4 E) {
   shared_ptr<Hit> nearestHit = make_shared<Hit>();
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       nearestHit = nullptr;
-      vec3 rayDir = genRayForPixel(x, y, width, height, camPos->getFOVY());
-      Ray ray(camPos->getPosition(), rayDir);
+      Ray ray = genRayForPixel(x, y, width, height, cam);
 
       int depth;
       if (SCENE == 4) {
@@ -405,4 +413,26 @@ void sceneMeshTransform(int width, int height, std::vector<std::shared_ptr<Mater
   lights.push_back(worldLight);
 
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 7, E);
+}
+void sceneCameraTransform(int width, int height, std::vector<std::shared_ptr<Material>> materials,
+                          std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
+                          std::shared_ptr<Camera> &cam, std::string FILENAME) {
+
+  Image image(width, height);
+  // Sphere(glm::vec3 position, float radius, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
+  shared_ptr<Shape> greenSphere = make_shared<Sphere>(vec3(0.5f, -1.0f, -1.0f), 1.0f, 1.0f, 0.0f, materials[1]);
+  shared_ptr<Shape> blueSphere = make_shared<Sphere>(vec3(0.0f, 1.0f, 0.0f), 1.0f, 1.0f, 0.0f, materials[2]);
+  shapes.push_back(redSphere);
+  shapes.push_back(greenSphere);
+  shapes.push_back(blueSphere);
+  Light worldLight(vec3(-2.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f);
+  vector<Light> lights;
+  lights.push_back(worldLight);
+  // init position(0.0f, 0.0f, 5.0f)
+  cam->translateCamera(vec3(-3.0f, 0.0f, -5.0f));
+  cam->setFOV(glm::radians(60.0f));
+  cam->setTarget(vec3(0.0f, 0.0f, 0.0f)); // Look at origin
+
+  genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 1);
 }

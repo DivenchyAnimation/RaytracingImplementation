@@ -108,6 +108,7 @@ int main(int argc, char **argv) {
     sceneMeshTransform(width, height, materials, shapes, hits, camera, FILENAME, posBuf, zBuf, norBuf, texBuf);
     break;
   case 8:
+    sceneCameraTransform(width, height, materials, shapes, hits, camera, FILENAME);
     break;
   };
 
