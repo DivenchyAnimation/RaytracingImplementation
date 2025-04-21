@@ -110,6 +110,9 @@ int main(int argc, char **argv) {
   case 8:
     sceneCameraTransform(width, height, materials, shapes, hits, camera, FILENAME);
     break;
+  case 9:
+    sceneMonteCarlo(width, height, materials, shapes, hits, camera, FILENAME);
+    break;
   };
 
   return 0;

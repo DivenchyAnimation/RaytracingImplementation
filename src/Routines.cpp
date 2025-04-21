@@ -5,6 +5,31 @@
 using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt, glm::vec3, glm::vec4, glm::mat4;
 
 // Helper functions
+void makeOrthonormalBasis(const glm::vec3 &N, glm::vec3 &T, glm::vec3 &B) {
+  if (std::abs(N.x) > 0.1f)
+    T = glm::normalize(glm::cross(N, glm::vec3(0, 1, 0)));
+  else
+    T = glm::normalize(glm::cross(N, glm::vec3(1, 0, 0)));
+  B = glm::cross(N, T);
+}
+
+float rand01() { return rand() / float(RAND_MAX); }
+
+// Help from ChatGPT
+vec3 cosineSampleHemisphere(const vec3 &N) {
+  float r1 = rand01();
+  float r2 = rand01();
+  float phi = 2.0f * M_PI * r1;
+  float cosTheta = std::sqrt(1.0f - r2);
+  float sinTheta = std::sqrt(r2);
+
+  // Spherical to Cartesian in local frame
+  glm::vec3 T, B;
+  makeOrthonormalBasis(N, T, B);
+  glm::vec3 H = sinTheta * std::cos(phi) * T + sinTheta * std::sin(phi) * B + cosTheta * N;
+  return glm::normalize(H);
+}
+
 mat4 buildMVMat(shared_ptr<Shape> &shape) {
   // Create Model matrix and apply transformations
   mat4 modelMat = glm::translate(mat4(1.0f), shape->getPosition());
@@ -157,6 +182,73 @@ vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights
   return finalColor;
 }
 
+vec3 pathTrace(Ray &ray, const vector<shared_ptr<Shape>> &shapes, const vector<Light> &lights, int depth) {
+  // No more bounces
+  if (depth <= 0) {
+    return vec3(0.0f);
+  }
+  // Initalize a dummy tVal
+  float nearestToCamT = std::numeric_limits<float>::max();
+  shared_ptr<Hit> nearestHit = nullptr;
+  vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
+
+  // Check intersections on each shape
+  for (shared_ptr<Shape> shape : shapes) {
+    mat4 modelMat = buildMVMat(shape);
+    // Obatain inv so that ray is in object space
+    mat4 modelMatInv = glm::inverse(modelMat);
+
+    shared_ptr<Hit> curHit;
+    curHit = shape->computeIntersection(ray, modelMat, modelMatInv, lights);
+    if (curHit->collision && curHit->t < nearestToCamT) {
+      nearestToCamT = curHit->t;
+      curHit->collisionShape = shape;
+      nearestHit = curHit;
+    }
+  }
+
+  // If hit exists, do shadow test and compute phong color
+  if (nearestHit == nullptr) {
+    return finalColor;
+  }
+
+  // 2) Emitted radiance (if shape is light source):
+  const float ambientI = 0.1f;
+  glm::vec3 Ka = nearestHit->collisionShape->getMaterial()->getMaterialKA();
+  glm::vec3 Ke = nearestHit->collisionShape->getMaterial()->getMaterialKA();
+
+  glm::vec3 L = Ka * ambientI // ambient on every hit
+                + Ke;         // add emission (zero on non‑lights)
+
+  for (auto &light : lights) {
+    glm::vec3 toL = light.pos - nearestHit->x;
+    float d2 = glm::dot(toL, toL);
+    glm::vec3 wi = glm::normalize(toL);
+    if (!isInShadow(nearestHit, light, shapes)) {
+      // simple Lambert:
+      float nDotL = std::max(glm::dot(nearestHit->n, wi), 0.0f);
+      L += nearestHit->collisionShape->getMaterial()->getMaterialKD() * light.color * (light.intensity / d2) * nDotL;
+    }
+  }
+
+  glm::vec3 newDir = cosineSampleHemisphere(nearestHit->n);
+  float pdf = glm::dot(nearestHit->n, newDir) / M_PI;
+  glm::vec3 brdf = nearestHit->collisionShape->getMaterial()->getMaterialKD() / (float)M_PI;
+  float cosTheta = glm::dot(nearestHit->n, newDir);
+  glm::vec3 throughput = brdf * cosTheta / pdf;
+
+  // Russian roulette
+  float q = std::min(throughput.r + throughput.g + throughput.b, 0.95f);
+  if (rand01() > q)
+    return L; // terminate, return what we’ve gathered so far
+  throughput /= q;
+
+  // recurse
+  Ray next(nearestHit->x + nearestHit->n * 1e-4f, newDir);
+  glm::vec3 Li = pathTrace(next, shapes, lights, depth - 1);
+  return L + throughput * Li;
+}
+
 void initMaterials(std::vector<std::shared_ptr<Material>> &materials) {
   shared_ptr<Material> redMaterial =
       make_shared<Material>(vec3(0.1f, 0.1f, 0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
@@ -302,6 +394,47 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
   std::cout << "Image written to " << FILENAME << std::endl;
 }
 
+void genScenePixelsMonteCarlo(Image &image, int width, int height, std::shared_ptr<Camera> &camPos,
+                              const std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
+                              const std::vector<Light> &lights, std::string FILENAME, int SCENE, glm::mat4 E) {
+  shared_ptr<Hit> nearestHit = make_shared<Hit>();
+  int totalPixels = width * height;
+  int pixelsDone = 0;
+  const int SAMPLES = 1000;
+  for (int y = 0; y < height; y++) {
+    std::cout << "PROGRESS: " << (float(pixelsDone) / float(totalPixels)) * 100.0f << "%" << std::endl;
+    for (int x = 0; x < width; x++) {
+      vec3 finalColor(0.0f); // Sum of all light
+      nearestHit = nullptr;
+      int depth = 5;
+
+      // Ray sampling
+      for (int s = 0; s < SAMPLES; s++) {
+        Ray ray = genRayForPixel(x, y, width, height, camPos);
+        finalColor += pathTrace(ray, shapes, lights, depth);
+      }
+
+      // Average then Convert color components from [0,1] to [0,255].
+      finalColor = finalColor / float(SAMPLES);
+      finalColor.r = clamp(finalColor.r);
+      finalColor.g = clamp(finalColor.g);
+      finalColor.b = clamp(finalColor.b);
+
+      unsigned char rVal = static_cast<unsigned char>(finalColor.r * 255);
+      unsigned char gVal = static_cast<unsigned char>(finalColor.g * 255);
+      unsigned char bVal = static_cast<unsigned char>(finalColor.b * 255);
+
+      // Set the pixel color in the image.
+      image.setPixel(x, y, rVal, gVal, bVal);
+      pixelsDone++;
+    }
+  }
+
+  // Write to image
+  image.writeToFile(FILENAME);
+  std::cout << "Image written to " << FILENAME << std::endl;
+}
+
 void sceneOne(int width, int height, std::vector<std::shared_ptr<Material>> materials,
               std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits, std::shared_ptr<Camera> &cam,
               std::string FILENAME) {
@@ -414,6 +547,7 @@ void sceneMeshTransform(int width, int height, std::vector<std::shared_ptr<Mater
 
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 7, E);
 }
+
 void sceneCameraTransform(int width, int height, std::vector<std::shared_ptr<Material>> materials,
                           std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
                           std::shared_ptr<Camera> &cam, std::string FILENAME) {
@@ -435,4 +569,38 @@ void sceneCameraTransform(int width, int height, std::vector<std::shared_ptr<Mat
   cam->setTarget(vec3(0.0f, 0.0f, 0.0f)); // Look at origin
 
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 1);
+}
+
+void sceneMonteCarlo(int width, int height, std::vector<std::shared_ptr<Material>> materials,
+                     std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
+                     std::shared_ptr<Camera> &cam, std::string FILENAME) {
+  Image image(width, height);
+  mat4 E = mat4(vec4(1.5f, 0.0f, 0.0f, 0.0f), vec4(0.0f, 1.4095f, 0.5130f, 0.0f), vec4(0.0f, -0.5130f, 1.4095f, 0.0f),
+                vec4(0.3f, -1.5f, 0.0f, 1.0f));
+  // Make scene
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
+  redSphere->getMaterial()->setMaterialKE(vec3(0.0f));
+  shared_ptr<Shape> reflSphere = make_shared<Sphere>(vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[4]);
+  reflSphere->getMaterial()->setMaterialKE(vec3(0.0f));
+  shared_ptr<Shape> floor = make_shared<Plane>(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
+  floor->getMaterial()->setMaterialKE(vec3(0.0f));
+  shared_ptr<Shape> backWall = make_shared<Plane>(vec3(0.0f, 0.0f, -3.0f), vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
+  backWall->getMaterial()->setMaterialKE(vec3(0.0f));
+  // Rotate wall
+  backWall->setRotationAxis(vec3(1.0f, 0.0f, 0.0f));
+  backWall->setRotationAngle(90.0f);
+  // Make an emmissive light
+  shared_ptr<Shape> blueLight = make_shared<Sphere>(vec3(1.5f, 0.5f, 1.0f), 1.0f, 0.8f, 0.0f, materials[2]);
+  blueLight->getMaterial()->setMaterialKE(vec3(0.0f, 0.0f, 1.0f)); // Make emmissive
+  // Lights
+  Light worldLight(vec3(1.5f, 0.5f, 1.0f), vec3(0.0f, 0.0f, 1.0f), 1.0f);
+  vector<Light> lights;
+  lights.push_back(worldLight);
+  shapes.push_back(redSphere);
+  shapes.push_back(reflSphere);
+  shapes.push_back(floor);
+  shapes.push_back(backWall);
+  shapes.push_back(blueLight);
+
+  genScenePixelsMonteCarlo(image, width, height, cam, shapes, hits, lights, FILENAME, 9, E);
 }
