@@ -1,7 +1,15 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+# CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.18) # 3.18 is required for CMake's CUDA support
+
+# Default to hardware acceleration
+OPTION(USE_CUDA "Enable hardware acceleration for NVIDIA GPU" ON)
 
 # Name of the project
-PROJECT(A6)
+if(USE_CUDA)
+    PROJECT(A6 LANGUAGES CXX CUDA)
+ELSE()
+    PROJECT(A6 LANGUAGES CXX)
+ENDIF()
 
 # Is this the solution?
 # Override with `cmake -DSOL=ON ..`
@@ -10,18 +18,65 @@ OPTION(SOL "Solution" OFF)
 # Use glob to get the list of all source files.
 # We don't really need to include header and resource files to build, but it's
 # nice to have them also show up in IDEs.
+#IF(${SOL})
+#  FILE(GLOB_RECURSE SOURCES "src0/*.cpp")
+#  FILE(GLOB_RECURSE SOURCES "src0/*.cu")
+#  FILE(GLOB_RECURSE SOURCES "src0/*.cuh")
+#  FILE(GLOB_RECURSE HEADERS "src0/*.h")
+#ELSE()
+#  FILE(GLOB_RECURSE SOURCES "src/*.cpp")
+#  FILE(GLOB_RECURSE SOURCES "src/*.cu")
+#  FILE(GLOB_RECURSE SOURCES "src/*.cuh")
+#  FILE(GLOB_RECURSE HEADERS "src/*.h")
+#ENDIF()
+
 IF(${SOL})
-  FILE(GLOB_RECURSE SOURCES "src0/*.cpp")
-  FILE(GLOB_RECURSE HEADERS "src0/*.h")
+# find all .cpp
+FILE(GLOB_RECURSE CPP_SOURCES "${CMAKE_SOURCE_DIR}/src0/*.cpp")
+# (optional) gather headers if you want them visible too
+FILE(GLOB_RECURSE HEADER_FILES "${CMAKE_SOURCE_DIR}/src0/*.h")
 ELSE()
-  FILE(GLOB_RECURSE SOURCES "src/*.cpp")
-  FILE(GLOB_RECURSE HEADERS "src/*.h")
+FILE(GLOB_RECURSE CPP_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
+# (optional) gather headers if you want them visible too
+FILE(GLOB_RECURSE HEADER_FILES "${CMAKE_SOURCE_DIR}/src/*.h")
 ENDIF()
+
+
+# Determine which main to use
+IF(USE_CUDA)
+	# find all .cu and .cuh
+	FILE(GLOB_RECURSE CUDA_SOURCES "${CMAKE_SOURCE_DIR}/src/*.cu")
+    # Remove duplicate main.cu from sources
+    LIST(REMOVE_ITEM CUDA_SOURCES "${CMAKE_SOURCE_DIR}/src/main.cu")
+	SET(SRC_MAIN "${CMAKE_SOURCE_DIR}/src/main.cu")
+	SET_SOURCE_FILES_PROPERTIES(${SRC_MAIN} PROPERTIES LANGUAGE CUDA)
+    # Remove main.cpp from sources
+    LIST(REMOVE_ITEM CPP_SOURCES "${CMAKE_SOURCE_DIR}/src/main.cpp")
+ELSE()
+    # find main.cpp
+    SET(CUDA_SOURCES )
+    # Remove duplicate main.cpp from sources
+    LIST(REMOVE_ITEM CPP_SOURCES "${CMAKE_SOURCE_DIR}/src/main.cpp")
+    FILE(SRC_MAIN "${CMAKE_SOURCE_DIR}/src/main.cpp")
+ENDIF()
+
+# now combine into one list
+set(ALL_SOURCES
+    ${SRC_MAIN}
+    ${CPP_SOURCES}
+    ${CUDA_SOURCES}
+    ${HEADER_FILES}   # optional, so they show up under "Header Files"
+)
 
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set the executable.
-ADD_EXECUTABLE(${CMAKE_PROJECT_NAME} ${SOURCES} ${HEADERS})
+ADD_EXECUTABLE(${CMAKE_PROJECT_NAME} ${ALL_SOURCES})
+
+IF(USE_CUDA)
+    # Set CUDA properties/flags
+    SET_TARGET_PROPERTIES(${CMAKE_PROJECT_NAME} PROPERTIES CUDA_STANDARD 11 CUDA_SEPARABLE_COMPILATION ON CUDA_ARCHITECTURES 75)
+ENDIF()
 
 # Use c++17
 SET_TARGET_PROPERTIES(${CMAKE_PROJECT_NAME} PROPERTIES CXX_STANDARD 17)

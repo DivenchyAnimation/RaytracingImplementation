@@ -2,6 +2,7 @@
 
 #include "Image.h"
 #include <algorithm>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -29,3 +30,4 @@
 #include "Ellipsoid.h"
 #include "Plane.h"
 #include "Mesh.h"
+#include "Source.h"

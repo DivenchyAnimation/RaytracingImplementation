@@ -16,8 +16,6 @@ vector<glm::vec3> rays;
 int SCENE;
 enum class SHAPE { CUBE, SPHERE, ELLIPSOID };
 
-void init() {}
-
 int main(int argc, char **argv) {
   if (argc < 4) {
     cout << "Usage: ./A6 <SCENE> <IMAGE SIZE> <IMAGE FILENAME>" << endl;
@@ -32,6 +30,7 @@ int main(int argc, char **argv) {
 
   // Init materials
   initMaterials(materials);
+  HelloWorld();
 
   // Load geometry
   vector<float> posBuf; // list of vertex positions
