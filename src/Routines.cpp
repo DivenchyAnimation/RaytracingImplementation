@@ -48,9 +48,7 @@ mat4 buildMVMat(shared_ptr<Shape> &shape, mat4 E) {
   return modelMat;
 }
 
-float clamp(float x, float minVal = 0.0f, float maxVal = 1.0f) { return std::max(minVal, std::min(x, maxVal)); }
-
-vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray ray, const vector<shared_ptr<Shape>> &shapes) {
+vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray &ray, const vector<shared_ptr<Shape>> &shapes) {
   bool isOccluded = isInShadow(nearestHit, light, shapes);
 
   // For now, use binary shadowing.

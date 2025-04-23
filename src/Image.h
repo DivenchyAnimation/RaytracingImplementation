@@ -14,6 +14,8 @@ public:
 	void writeToFile(const std::string &filename);
 	int getWidth() const { return width; }
 	int getHeight() const { return height; }
+	// For CUDA return a pointer to the pixel data
+	unsigned char *getPixels() { return &pixels[0]; }
 
 private:
 	int width;

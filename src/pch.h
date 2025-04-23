@@ -30,4 +30,3 @@
 #include "Ellipsoid.h"
 #include "Plane.h"
 #include "Mesh.h"
-#include "Source.h"
