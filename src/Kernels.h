@@ -6,4 +6,4 @@
 #include "GPUVecOps.h"
 #pragma once
 
-__device__ vec3 KernelcalcLightContribution(const GPULight &light, GPUHit *nearestHit, GPURay ray, const GPUShape **shapes, int nShapes);
+HD vec3 KernelcalcLightContribution(const GPULight &light, GPUHit *nearestHit, GPURay ray, const GPUShape **shapes, int nShapes);

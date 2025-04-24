@@ -12,9 +12,9 @@ struct GPUMaterial {
   vec3 ke; // emissive, 0 vec for non lights
 
   // Default Material
-  GPUMaterial() : ka(vec3(0.1f, 0.1f, 0.1f)), kd(vec3(1.0f, 0.0f, 0.0f)), ks(vec3(1.0f, 1.0f, 0.5f)), s(100.0f) {};
-  GPUMaterial(const vec3 &ka, const vec3 &kd, const vec3 &ks, float s);
-  GPUMaterial(const vec3 &ka, const vec3 &kd, const vec3 &ks, float s, float reflectivity);
+  HD GPUMaterial() : ka(vec3(0.1f, 0.1f, 0.1f)), kd(vec3(1.0f, 0.0f, 0.0f)), ks(vec3(1.0f, 1.0f, 0.5f)), s(100.0f) {};
+  HD GPUMaterial(const vec3 &ka, const vec3 &kd, const vec3 &ks, float s);
+  HD GPUMaterial(const vec3 &ka, const vec3 &kd, const vec3 &ks, float s, float reflectivity);
   vec3 getMaterialKA();
   vec3 getMaterialKD();
   vec3 getMaterialKS();

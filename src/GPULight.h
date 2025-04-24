@@ -1,4 +1,5 @@
 #pragma once
+#include "GPUVecOps.h"
 
 struct GPULight {
   vec3 pos;
@@ -7,7 +8,7 @@ struct GPULight {
   float ringRadius;
   float intensity;
 
-  GPULight(const vec3 &pos, const vec3 &color, float intensity) {
+  HD GPULight(const vec3 &pos, const vec3 &color, float intensity) {
     this->pos = pos;
     this->color = color;
     this->intensity = intensity;
@@ -15,7 +16,7 @@ struct GPULight {
     this->ringRadius = 0.0f;
   };
 
-  GPULight(const vec3 &pos, const vec3 &color, const float baseAngle, const float ringRadius) {
+  HD GPULight(const vec3 &pos, const vec3 &color, const float baseAngle, const float ringRadius) {
     this->pos = pos;
     this->color = color;
     this->baseAngle = baseAngle;

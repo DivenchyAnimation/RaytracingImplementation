@@ -1,8 +1,6 @@
 #pragma once
 #include <cuda_runtime.h>
-// HD macro for host device set flags/attrib
-#define HD __host__ __device__
-
+#include "commonCUDA.cuh"
 
 struct vec3 {
 	float x;
@@ -21,15 +19,15 @@ struct vec4 {
 	float z;
 	float w;
 
-	vec4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {};
-	vec4(float x, float y, float z, float w) : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {};
+	HD vec4() : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {};
+	HD vec4(float x, float y, float z, float w) : x(0.0f), y(0.0f), z(0.0f), w(0.0f) {};
 };
 
 struct mat4 {
 	// Identity matrix
 	float **matrix;
 
-	mat4() {
+	HD mat4() {
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
 				matrix[i][j] = 0.0f;
@@ -37,7 +35,7 @@ struct mat4 {
 			matrix[i][i] = 1.0f;
 		}
 	}
-	mat4(vec4 row0, vec4 row1, vec4 row2, vec4 row3) {
+	HD mat4(vec4 row0, vec4 row1, vec4 row2, vec4 row3) {
 		float **m = (float **)malloc(4 * sizeof(float *));
 		// Allocate memory for each row
 		for (int i = 0; i < 4; i++) {
@@ -79,4 +77,3 @@ __device__ inline float GPUdot(vec3 a, vec3 b) {
 //	return vector / dot;
 //};
 
-#undef HD

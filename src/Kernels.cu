@@ -10,7 +10,7 @@ __global__ void fillRedKernel(unsigned char *d_pixels, int numPixels) {
 	d_pixels[base + 2] = 0; // B
 }
 
-__device__ bool isInShadow(GPUHit *nearestHit, const GPULight &light, const GPUShape **shapes, int nShapes) {
+HD bool isInShadow(GPUHit *nearestHit, const GPULight &light, const GPUShape **shapes, int nShapes) {
 
   // Shadow test for each light
   //float epsilon = 0.001f;
@@ -48,7 +48,7 @@ __device__ bool isInShadow(GPUHit *nearestHit, const GPULight &light, const GPUS
   return false;
 }
 
-__device__ vec3 KernelcalcLightContribution(const GPULight &light, GPUHit *nearestHit, GPURay ray, const GPUShape **shapes, int nShapes) {
+HD vec3 KernelcalcLightContribution(const GPULight &light, GPUHit *nearestHit, GPURay ray, const GPUShape **shapes, int nShapes) {
 	return vec3(0.0f, 0.0f, 0.0f);
 };
 
