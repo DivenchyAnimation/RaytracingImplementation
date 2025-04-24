@@ -1,13 +1,5 @@
 #pragma once
-#include <glm/glm.hpp>
-#include "Material.h"
-#include <cuda_runtime.h>
-#include <vector>
-#include "Ray.h"
-#include "Light.h"
-#include "GPUHit.h"
-#include "GPUVecOps.h"
-
+#include "pch.cuh"
 
 // Virtual is illegal on the device
 enum GPUShapeType : int { SPHERE, ELLIPSOID, CUBE, CYLINDER, PLANE };
@@ -15,19 +7,20 @@ enum GPUShapeType : int { SPHERE, ELLIPSOID, CUBE, CYLINDER, PLANE };
 union ShapeData {
 	struct { float radius; } SPHERE;
 	struct { float radius; } ELLIPSOID;
-	struct { glm::vec3 normal; } PLANE;
+	struct { vec3 normal; } PLANE;
 };
 
+struct GPUMaterial;
 struct GPUShape {
 	GPUShapeType type = GPUShapeType::SPHERE;               // Default shape type
-	glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f); // Center of shape
-	glm::vec3 rotation = glm::vec3(0.0f, 1.0f, 0.0f); // Axis of rotation
-	glm::vec3 scale = glm::vec3(1.0f);
+	vec3 position = vec3(0.0f, 0.0f, 0.0f); // Center of shape
+	vec3 rotation = vec3(0.0f, 1.0f, 0.0f); // Axis of rotation
+	vec3 scale = vec3(1.0f);
 	float rotationAngle = 0.0f;
 	ShapeData data;
-	Material material = Material();		// Default material
+	GPUMaterial *material;		// Default material
 	bool isReflective = false; // Default is not reflective
 };
 
-__device__ GPUHit* computeIntersection(const GPUShape *s, const Ray &ray, const glm::mat4 modelMat, const glm::mat4 modelMatInv,
-	const Light *lights);
+__device__ GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 modelMat, const mat4 modelMatInv,
+	const GPULight *lights);

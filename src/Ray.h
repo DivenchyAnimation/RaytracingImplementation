@@ -1,4 +1,4 @@
-#include "pch.h"
+#pragma once
 
 struct Ray {
   glm::vec3 rayOrigin;

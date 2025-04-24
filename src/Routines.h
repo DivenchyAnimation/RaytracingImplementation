@@ -1,4 +1,5 @@
 // Helpers now defined in header so it can be used in kernels (CUDA)
+#include <memory>
 
 void makeOrthonormalBasis(const glm::vec3 &N, glm::vec3 &T, glm::vec3 &B);
 float rand01() { return rand() / float(RAND_MAX); }

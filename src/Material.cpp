@@ -1,5 +1,3 @@
-#include "pch.h"
-
 using glm::vec3, glm::vec4, glm::mat4;
 
 Material::Material(const vec3 &ka, const vec3 &kd, const vec3 &ks, float s) {

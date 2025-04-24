@@ -1,6 +1,5 @@
 // src/ Routines.cpp
 #include "Routines.h"
-#include <memory>
 
 using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt, glm::vec3, glm::vec4, glm::mat4;
 
@@ -12,8 +11,6 @@ void makeOrthonormalBasis(const glm::vec3 &N, glm::vec3 &T, glm::vec3 &B) {
     T = glm::normalize(glm::cross(N, glm::vec3(1, 0, 0)));
   B = glm::cross(N, T);
 }
-
-float rand01() { return rand() / float(RAND_MAX); }
 
 // Help from ChatGPT
 vec3 cosineSampleHemisphere(const vec3 &N) {
