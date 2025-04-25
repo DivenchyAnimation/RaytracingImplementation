@@ -1,24 +1,25 @@
 #include <iostream>
-#include <cuda_runtime.h>
-#include "Image.h"
+#include "pch.cuh"
 
-int TASK;
+char *FILENAME;
+int SCENE;
 int width, height;
+GPUShape **device_shapesPtrs = NULL;
 
 extern __global__ void fillRedKernel(unsigned char *, int);
 
 int main(int arc, char** argv) {
 
 	if (arc != 4) {
-		std::cerr << "Usage: ./A6 <TASK NUM> <IMAGE SIZE> <OUTFILENAME>";
+		std::cerr << "Usage: ./A6 <SCENE> <IMAGE SIZE> <OUTFILENAME>";
 		return 1;
 	}
 
 	// Init user input
-	TASK = atoi(argv[1]);
+	SCENE = atoi(argv[1]);
 	width = atoi(argv[2]);
 	height = width;
-
+	FILENAME = argv[3];
 
 	// Create Image
 	Image image(width, height);
@@ -28,7 +29,6 @@ int main(int arc, char** argv) {
 	size_t numPixels = width * height;
 	size_t bufferSize = numPixels * sizeof(unsigned char) * 3;
 	cudaMalloc(&d_pixels, bufferSize);
-
 
 	// Launch kernel
 	int numThreads = 256;
