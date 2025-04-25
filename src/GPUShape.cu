@@ -2,8 +2,9 @@
 #include <math.h>
 
 
-HD GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 modelMat, const mat4 modelMatInv) {
-	GPUHit *hit = NULL; // assume collision is false
+HD GPUHit computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 modelMat, const mat4 modelMatInv) {
+	GPUHit hit;
+	hit.collision = false;
 	switch (s->type) {
 		case GPUShapeType::SPHERE: {
 
@@ -24,7 +25,6 @@ HD GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 
 			discriminant = b * b - 4 * a * c;
 
 			// If discriminant is negative, no collision with shape
-			discriminant = 0;
 			if (discriminant < 0) {
 			  return hit;
 			}
@@ -62,14 +62,14 @@ HD GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 
 			}
 
 			// Ray hit
-			hit->t = t_world;
+			hit.t = t_world;
 			vec3 P = worldHitPoint; // Intersection point
 			vec3 N = worldNormal;   // Normal at intersection point
-			hit->x = P;
-			hit->n = N;
+			hit.x = P;
+			hit.n = N;
 
 			// Add all lights contribution to the color
-			hit->collision = true;
+			hit.collision = true;
 		}
 	}
 	return hit;

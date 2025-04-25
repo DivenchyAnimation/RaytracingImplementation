@@ -9,7 +9,7 @@ struct GPUHit {
   bool collision = false;
   GPUShape *collisionShape = NULL; // shape that was hit
 
-  GPUHit() {
+  HD GPUHit() {
 	  this->x = vec3(0.0f);
 	  this->n = vec3(0.0f);
 	  this->t = 0.0f;

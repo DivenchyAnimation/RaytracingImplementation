@@ -7,7 +7,7 @@
 struct GPUCamera {
 	enum { ROTATE = 0, TRANSLATE, SCALE };
 
-	GPUCamera();
+	HD GPUCamera();
 	virtual ~GPUCamera();
 	void setInitDistance(float z) { translations.z = -GPUabs(z); }
 	void setAspect(float a) { aspect = a; };
@@ -30,7 +30,6 @@ struct GPUCamera {
 	vec2 rotations;
 	vec3 translations;
 	vec2 mousePrev;
-	int state;
 	float rfactor;
 	float tfactor;
 	float sfactor;

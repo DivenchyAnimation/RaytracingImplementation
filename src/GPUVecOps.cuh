@@ -105,27 +105,12 @@ struct mat4 {
 	}
 
 	// Parameterized matrix
-	HD mat4(vec4 row0, vec4 row1, vec4 row2, vec4 row3) {
-		// Init from vecs
-		matrix[0][0] = row0.x;
-		matrix[0][1] = row0.y;
-		matrix[0][2] = row0.z;
-		matrix[0][3] = row0.w;
-
-		matrix[1][0] = row1.x;
-		matrix[1][1] = row1.y;
-		matrix[1][2] = row1.z;
-		matrix[1][3] = row1.w;
-
-		matrix[2][0] = row2.x;
-		matrix[2][1] = row2.y;
-		matrix[2][2] = row2.z;
-		matrix[2][3] = row2.w;
-
-		matrix[3][0] = row3.x;
-		matrix[3][1] = row3.y;
-		matrix[3][2] = row3.z;
-		matrix[3][3] = row3.w;
+	HD mat4(const vec4 &c0, const vec4 &c1, const vec4 &c2, const vec4 &c3) {
+		// each vec4 is a COLUMN
+		matrix[0][0] = c0.x;  matrix[1][0] = c0.y;  matrix[2][0] = c0.z;  matrix[3][0] = c0.w;
+		matrix[0][1] = c1.x;  matrix[1][1] = c1.y;  matrix[2][1] = c1.z;  matrix[3][1] = c1.w;
+		matrix[0][2] = c2.x;  matrix[1][2] = c2.y;  matrix[2][2] = c2.z;  matrix[3][2] = c2.w;
+		matrix[0][3] = c3.x;  matrix[1][3] = c3.y;  matrix[2][3] = c3.z;  matrix[3][3] = c3.w;
 	}
 
 	HD float *operator[](size_t row) { assert(row < 4); return matrix[row]; }

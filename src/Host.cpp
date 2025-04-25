@@ -1,9 +1,7 @@
 // Main routines for device to host communication
 #include "Host.h"
 
-
-void initMaterials(GPUMaterial *materials) {
-	GPUMaterial *mats = (GPUMaterial *)malloc(6 * sizeof(GPUMaterial));
+void initMaterials(GPUMaterial *mats) {
 	GPUMaterial redMaterial = GPUMaterial(vec3(0.1f, 0.1f, 0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
 	GPUMaterial greenMaterial = GPUMaterial(vec3(0.1f, 0.1f, 0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
 	GPUMaterial blueMaterial = GPUMaterial(vec3(0.1f, 0.1f, 0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
