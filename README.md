@@ -1,4 +1,4 @@
-# CSCE 441 Graphics A1
+# A6
 
 Name: Leonardo Frias
 UID: 732005816
@@ -12,5 +12,4 @@ Citations:
 
 ## NOTES
 
-- This assignment was completed in Linux (shouldn't have impact on anything)
-- In CMakeLists.txt line 44, added a target precompiled headers line
+- Hardware Acceleration done through CUDA 12.8
