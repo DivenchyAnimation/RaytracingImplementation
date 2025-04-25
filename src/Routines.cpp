@@ -1,7 +1,7 @@
 // src/ Routines.cpp
 #include "Routines.h"
 
-using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt, glm::vec3, glm::vec4, glm::mat4;
+using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt;
 
 // Helper functions
 void makeOrthonormalBasis(const glm::vec3 &N, glm::vec3 &T, glm::vec3 &B) {
@@ -13,7 +13,7 @@ void makeOrthonormalBasis(const glm::vec3 &N, glm::vec3 &T, glm::vec3 &B) {
 }
 
 // Help from ChatGPT
-vec3 cosineSampleHemisphere(const vec3 &N) {
+glm::vec3 cosineSampleHemisphere(const glm::vec3 &N) {
   float r1 = rand01();
   float r2 = rand01();
   float phi = 2.0f * M_PI * r1;
@@ -27,9 +27,9 @@ vec3 cosineSampleHemisphere(const vec3 &N) {
   return glm::normalize(H);
 }
 
-mat4 buildMVMat(shared_ptr<Shape> &shape) {
+glm::mat4 buildMVMat(shared_ptr<Shape> &shape) {
   // Create Model matrix and apply transformations
-  mat4 modelMat = glm::translate(mat4(1.0f), shape->getPosition());
+  glm::mat4 modelMat = glm::translate(glm::mat4(1.0f), shape->getPosition());
   // Apply rotation
   modelMat = glm::rotate(modelMat, glm::radians(shape->getRotationAngle()), shape->getRotationAxis());
   modelMat = glm::scale(modelMat, shape->getScale());
@@ -37,15 +37,15 @@ mat4 buildMVMat(shared_ptr<Shape> &shape) {
   return modelMat;
 }
 
-mat4 buildMVMat(shared_ptr<Shape> &shape, mat4 E) {
+glm::mat4 buildMVMat(shared_ptr<Shape> &shape, glm::mat4 E) {
   // Create Model matrix and apply transformations
-  mat4 modelMat = glm::translate(mat4(1.0f), shape->getPosition());
+  glm::mat4 modelMat = glm::translate(glm::mat4(1.0f), shape->getPosition());
   modelMat = modelMat * E;
 
   return modelMat;
 }
 
-vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray &ray, const vector<shared_ptr<Shape>> &shapes) {
+glm::vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray &ray, const vector<shared_ptr<Shape>> &shapes) {
   bool isOccluded = isInShadow(nearestHit, light, shapes);
 
   // For now, use binary shadowing.
@@ -53,35 +53,35 @@ vec3 calcLightContribution(const Light &light, shared_ptr<Hit> nearestHit, Ray &
   shared_ptr<Shape> shape = nearestHit->collisionShape;
 
   // 2. Compute diffuse shading.
-  vec3 L = glm::normalize(light.pos - nearestHit->x);
+  glm::vec3 L = glm::normalize(light.pos - nearestHit->x);
   float diff = std::max(glm::dot(nearestHit->n, L), 0.0f);
-  vec3 diffuse = light.intensity * shape->getMaterial()->getMaterialKD() * diff;
+  glm::vec3 diffuse = light.intensity * shape->getMaterial()->getMaterialKD() * diff;
 
   // 3. Compute specular shading (Phong model).
-  vec3 V = glm::normalize(ray.rayOrigin - nearestHit->x); // View direction.
-  vec3 H = glm::normalize(L + V);                         // Halfway vector.
+  glm::vec3 V = glm::normalize(ray.rayOrigin - nearestHit->x); // View direction.
+  glm::vec3 H = glm::normalize(L + V);                         // Halfway vector.
   float spec = pow(std::max(glm::dot(nearestHit->n, H), 0.0f), shape->getMaterial()->getMaterialS());
-  vec3 specular = light.intensity * shape->getMaterial()->getMaterialKS() * spec;
+  glm::vec3 specular = light.intensity * shape->getMaterial()->getMaterialKS() * spec;
 
   // 4. Return the light's contribution scaled by the shadow factor.
   return shadowFactor * (diffuse + specular);
 }
 
-vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights, const vector<shared_ptr<Shape>> &shapes,
+glm::vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights, const vector<shared_ptr<Shape>> &shapes,
               int depth) {
   // No more bounces
   if (depth <= 0) {
-    return vec3(0.0f);
+    return glm::vec3(0.0f);
   }
   // Initalize a dummy tVal
   float nearestToCamT = std::numeric_limits<float>::max();
-  vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
+  glm::vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
 
   // Check intersections on each shape
   for (shared_ptr<Shape> shape : shapes) {
-    mat4 modelMat = buildMVMat(shape);
+    glm::mat4 modelMat = buildMVMat(shape);
     // Obatain inv so that ray is in object space
-    mat4 modelMatInv = glm::inverse(modelMat);
+    glm::mat4 modelMatInv = glm::inverse(modelMat);
 
     shared_ptr<Hit> curHit;
     curHit = shape->computeIntersection(ray, modelMat, modelMatInv, lights);
@@ -95,7 +95,7 @@ vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights
   // If hit exists, do shadow test and compute phong color
   if ((nearestHit != nullptr)) {
     // init color to ambient, then add light contributions
-    vec3 totalLight = nearestHit->collisionShape->getMaterial()->getMaterialKA();
+    glm::vec3 totalLight = nearestHit->collisionShape->getMaterial()->getMaterialKA();
     for (const Light &light : lights) {
       totalLight += calcLightContribution(light, nearestHit, Ray(ray.rayOrigin, ray.rayDirection), shapes);
     }
@@ -108,35 +108,35 @@ vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights
   float kr = nearestHit->collisionShape->getMaterial()->getMaterialReflectivity();
   if (kr > 0.0f) {
     // reflect direction about normal:
-    vec3 I = glm::normalize(ray.rayDirection);
-    vec3 N = nearestHit->n;
-    vec3 R = I - 2.0f * glm::dot(I, N) * N;
+    glm::vec3 I = glm::normalize(ray.rayDirection);
+    glm::vec3 N = nearestHit->n;
+    glm::vec3 R = I - 2.0f * glm::dot(I, N) * N;
     // offset origin to avoid self‐intersection:
-    vec3 origin = nearestHit->x + N * 0.001f;
+    glm::vec3 origin = nearestHit->x + N * 0.001f;
     Ray reflectRay(origin, R);
-    vec3 reflCol = traceRay(reflectRay, nearestHit, lights, shapes, depth - 1);
+    glm::vec3 reflCol = traceRay(reflectRay, nearestHit, lights, shapes, depth - 1);
     // blend: local*(1–kr) + reflection*kr
-    finalColor = mix(finalColor, reflCol, kr);
+    finalColor = glm::mix(finalColor, reflCol, kr);
   }
 
   return finalColor;
 }
 
-vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights, const vector<shared_ptr<Shape>> &shapes,
-              int depth, mat4 E) {
+glm::vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights, const vector<shared_ptr<Shape>> &shapes,
+              int depth, glm::mat4 E) {
   // No more bounces
   if (depth <= 0) {
-    return vec3(0.0f);
+    return glm::vec3(0.0f);
   }
   // Initalize a dummy tVal
   float nearestToCamT = std::numeric_limits<float>::max();
-  vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
+  glm::vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
 
   // Check intersections on each shape
   for (shared_ptr<Shape> shape : shapes) {
-    mat4 modelMat = buildMVMat(shape, E);
+    glm::mat4 modelMat = buildMVMat(shape, E);
     // Obatain inv so that ray is in object space
-    mat4 modelMatInv = glm::inverse(modelMat);
+    glm::mat4 modelMatInv = glm::inverse(modelMat);
 
     shared_ptr<Hit> curHit;
     curHit = shape->computeIntersection(ray, modelMat, modelMatInv, lights);
@@ -150,7 +150,7 @@ vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights
   // If hit exists, do shadow test and compute phong color
   if ((nearestHit != nullptr)) {
     // init color to ambient, then add light contributions
-    vec3 totalLight = nearestHit->collisionShape->getMaterial()->getMaterialKA();
+    glm::vec3 totalLight = nearestHit->collisionShape->getMaterial()->getMaterialKA();
     for (const Light &light : lights) {
       totalLight += calcLightContribution(light, nearestHit, Ray(ray.rayOrigin, ray.rayDirection), shapes);
     }
@@ -163,35 +163,35 @@ vec3 traceRay(Ray &ray, shared_ptr<Hit> &nearestHit, const vector<Light> &lights
   float kr = nearestHit->collisionShape->getMaterial()->getMaterialReflectivity();
   if (kr > 0.0f) {
     // reflect direction about normal:
-    vec3 I = glm::normalize(ray.rayDirection);
-    vec3 N = nearestHit->n;
-    vec3 R = I - 2.0f * glm::dot(I, N) * N;
+    glm::vec3 I = glm::normalize(ray.rayDirection);
+    glm::vec3 N = nearestHit->n;
+    glm::vec3 R = I - 2.0f * glm::dot(I, N) * N;
     // offset origin to avoid self‐intersection:
-    vec3 origin = nearestHit->x + N * 0.001f;
+    glm::vec3 origin = nearestHit->x + N * 0.001f;
     Ray reflectRay(origin, R);
-    vec3 reflCol = traceRay(reflectRay, nearestHit, lights, shapes, depth - 1);
+    glm::vec3 reflCol = traceRay(reflectRay, nearestHit, lights, shapes, depth - 1);
     // blend: local*(1–kr) + reflection*kr
-    finalColor = mix(finalColor, reflCol, kr);
+    finalColor = glm::mix(finalColor, reflCol, kr);
   }
 
   return finalColor;
 }
 
-vec3 pathTrace(Ray &ray, const vector<shared_ptr<Shape>> &shapes, const vector<Light> &lights, int depth) {
+glm::vec3 pathTrace(Ray &ray, const vector<shared_ptr<Shape>> &shapes, const vector<Light> &lights, int depth) {
   // No more bounces
   if (depth <= 0) {
-    return vec3(0.0f);
+    return glm::vec3(0.0f);
   }
   // Initalize a dummy tVal
   float nearestToCamT = std::numeric_limits<float>::max();
   shared_ptr<Hit> nearestHit = nullptr;
-  vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
+  glm::vec3 finalColor(0.0f, 0.0f, 0.0f); // black bachground
 
   // Check intersections on each shape
   for (shared_ptr<Shape> shape : shapes) {
-    mat4 modelMat = buildMVMat(shape);
+    glm::mat4 modelMat = buildMVMat(shape);
     // Obatain inv so that ray is in object space
-    mat4 modelMatInv = glm::inverse(modelMat);
+    glm::mat4 modelMatInv = glm::inverse(modelMat);
 
     shared_ptr<Hit> curHit;
     curHit = shape->computeIntersection(ray, modelMat, modelMatInv, lights);
@@ -246,14 +246,14 @@ vec3 pathTrace(Ray &ray, const vector<shared_ptr<Shape>> &shapes, const vector<L
 
 void initMaterials(std::vector<std::shared_ptr<Material>> &materials) {
   shared_ptr<Material> redMaterial =
-      make_shared<Material>(vec3(0.1f, 0.1f, 0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
+      make_shared<Material>(glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 0.5f), 100.0f);
   shared_ptr<Material> greenMaterial =
-      make_shared<Material>(vec3(0.1f, 0.1f, 0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
+      make_shared<Material>(glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 0.5f), 100.0f);
   shared_ptr<Material> blueMaterial =
-      make_shared<Material>(vec3(0.1f, 0.1f, 0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f);
-  shared_ptr<Material> planeMaterial = make_shared<Material>(vec3(0.1f), vec3(1.0f), vec3(0.0f), 0.0f);
-  shared_ptr<Material> mirror = make_shared<Material>(vec3(0.0f), vec3(0.0f), vec3(1.0f), 100.0f, 1.0f);
-  shared_ptr<Material> meshMat = make_shared<Material>(vec3(0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.5f), 100.0f, 0.0f);
+      make_shared<Material>(glm::vec3(0.1f, 0.1f, 0.1f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 1.0f, 0.5f), 100.0f);
+  shared_ptr<Material> planeMaterial = make_shared<Material>(glm::vec3(0.1f), glm::vec3(1.0f), glm::vec3(0.0f), 0.0f);
+  shared_ptr<Material> mirror = make_shared<Material>(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(1.0f), 100.0f, 1.0f);
+  shared_ptr<Material> meshMat = make_shared<Material>(glm::vec3(0.1f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.0f, 1.0f, 0.5f), 100.0f, 0.0f);
   materials.push_back(redMaterial);
   materials.push_back(greenMaterial);
   materials.push_back(blueMaterial);
@@ -274,10 +274,10 @@ Ray genRayForPixel(int x, int y, int width, int height, shared_ptr<Camera> &cam)
   float u = (((x + 0.5f) / width) * 2.0f - 1.0f) * tanX;
   float v = (((y + 0.5f) / height) * 2.0f - 1.0f) * tanY;
 
-  vec3 camPos = cam->getPosition();
-  vec3 forward = glm::normalize(cam->getTarget() - camPos);
-  vec3 right = glm::normalize(glm::cross(forward, cam->getWorldUp()));
-  vec3 up = glm::cross(right, forward);
+  glm::vec3 camPos = cam->getPosition();
+  glm::vec3 forward = glm::normalize(cam->getTarget() - camPos);
+  glm::vec3 right = glm::normalize(glm::cross(forward, cam->getWorldUp()));
+  glm::vec3 up = glm::cross(right, forward);
 
   glm::vec3 rayDirWorld = glm::normalize(u * right + v * up + 1.0f * forward);
 
@@ -289,7 +289,7 @@ bool isInShadow(shared_ptr<Hit> nearestHit, const Light &light, const vector<sha
 
   // Shadow test for each light
   float epsilon = 0.001f;
-  vec3 shadowOrigin = nearestHit->x + nearestHit->n * epsilon;
+  glm::vec3 shadowOrigin = nearestHit->x + nearestHit->n * epsilon;
 
   Ray shadowRay(shadowOrigin, glm::normalize(light.pos - shadowOrigin));
   float lightDistance = glm::length(light.pos - shadowOrigin);
@@ -302,11 +302,11 @@ bool isInShadow(shared_ptr<Hit> nearestHit, const Light &light, const vector<sha
       continue; // Don't double count shape that caused initial hit
     }
     // Create Model matrix and apply transformations
-    mat4 modelMat = glm::translate(mat4(1.0f), shape->getPosition());
+    glm::mat4 modelMat = glm::translate(glm::mat4(1.0f), shape->getPosition());
     modelMat = glm::scale(modelMat, shape->getScale());
 
     // Obatain inv so that ray is in object space
-    mat4 modelMatInv = glm::inverse(modelMat);
+    glm::mat4 modelMatInv = glm::inverse(modelMat);
     shared_ptr<Hit> shadowHit;
     shadowHit = shape->computeIntersection(shadowRay, modelMat, modelMatInv, vector<Light>{light});
     // If a collision occurs and the distance is less than the light's, then this light is occluded.
@@ -333,7 +333,7 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
       } else {
         depth = 5;
       }
-      vec3 finalColor = traceRay(ray, nearestHit, lights, shapes, depth);
+      glm::vec3 finalColor = traceRay(ray, nearestHit, lights, shapes, depth);
       // Convert color components from [0,1] to [0,255].
 
       finalColor.r = clamp(finalColor.r);
@@ -355,7 +355,7 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
 }
 
 void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam, const vector<shared_ptr<Shape>> &shapes,
-                    vector<shared_ptr<Hit>> &hits, const vector<Light> &lights, string FILENAME, int SCENE, mat4 E) {
+                    vector<shared_ptr<Hit>> &hits, const vector<Light> &lights, string FILENAME, int SCENE, glm::mat4 E) {
   shared_ptr<Hit> nearestHit = make_shared<Hit>();
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -368,7 +368,7 @@ void genScenePixels(Image &image, int width, int height, shared_ptr<Camera> &cam
       } else {
         depth = 5;
       }
-      vec3 finalColor = traceRay(ray, nearestHit, lights, shapes, depth, E);
+      glm::vec3 finalColor = traceRay(ray, nearestHit, lights, shapes, depth, E);
       // Convert color components from [0,1] to [0,255].
 
       finalColor.r = clamp(finalColor.r);
@@ -399,7 +399,7 @@ void genScenePixelsMonteCarlo(Image &image, int width, int height, std::shared_p
   for (int y = 0; y < height; y++) {
     std::cout << "PROGRESS: " << (float(pixelsDone) / float(totalPixels)) * 100.0f << "%" << std::endl;
     for (int x = 0; x < width; x++) {
-      vec3 finalColor(0.0f); // Sum of all light
+      glm::vec3 finalColor(0.0f); // Sum of all light
       nearestHit = nullptr;
       int depth = 5;
 
@@ -435,13 +435,13 @@ void sceneOne(int width, int height, std::vector<std::shared_ptr<Material>> mate
               std::string FILENAME) {
   Image image(width, height);
   // Sphere(glm::vec3 position, float radius, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
-  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
-  shared_ptr<Shape> greenSphere = make_shared<Sphere>(vec3(0.5f, -1.0f, -1.0f), 1.0f, 1.0f, 0.0f, materials[1]);
-  shared_ptr<Shape> blueSphere = make_shared<Sphere>(vec3(0.0f, 1.0f, 0.0f), 1.0f, 1.0f, 0.0f, materials[2]);
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(glm::vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
+  shared_ptr<Shape> greenSphere = make_shared<Sphere>(glm::vec3(0.5f, -1.0f, -1.0f), 1.0f, 1.0f, 0.0f, materials[1]);
+  shared_ptr<Shape> blueSphere = make_shared<Sphere>(glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 1.0f, 0.0f, materials[2]);
   shapes.push_back(redSphere);
   shapes.push_back(greenSphere);
   shapes.push_back(blueSphere);
-  Light worldLight(vec3(-2.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f);
+  Light worldLight(glm::vec3(-2.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f);
   vector<Light> lights;
   lights.push_back(worldLight);
 
@@ -454,18 +454,18 @@ void sceneThree(int width, int height, std::vector<std::shared_ptr<Material>> ma
   Image image(width, height);
   // Ellipsoid(glm::vec3 position, float radius, glm::vec3 scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
   shared_ptr<Shape> redEllipsoid =
-      make_shared<Ellipsoid>(vec3(0.5f, 0.0f, 0.5f), 1.0f, vec3(0.5f, 0.6f, 0.2f), 0.0f, materials[0]);
-  shared_ptr<Shape> greenSphere = make_shared<Sphere>(vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[1]);
+      make_shared<Ellipsoid>(glm::vec3(0.5f, 0.0f, 0.5f), 1.0f, glm::vec3(0.5f, 0.6f, 0.2f), 0.0f, materials[0]);
+  shared_ptr<Shape> greenSphere = make_shared<Sphere>(glm::vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[1]);
   // Plane
   //Plane(glm::vec3 position, glm::vec3 normal, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
   shared_ptr<Shape> plane =
-      make_shared<Plane>(vec3(0.0f, -1.0f, 0.0f), glm::normalize(vec3(0.0f, 1.0f, 0.0f)), 1.0f, 0.0f, materials[3]);
+      make_shared<Plane>(glm::vec3(0.0f, -1.0f, 0.0f), glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f)), 1.0f, 0.0f, materials[3]);
   shapes.push_back(redEllipsoid);
   shapes.push_back(greenSphere);
   shapes.push_back(plane);
   // Create scene lights
-  Light worldLightOne(vec3(1.0f, 2.0f, 2.0f), vec3(1.0f), 0.5f);
-  Light worldLightTwo(vec3(-1.0f, 2.0f, -1.0f), vec3(1.0f), 0.5f);
+  Light worldLightOne(glm::vec3(1.0f, 2.0f, 2.0f), glm::vec3(1.0f), 0.5f);
+  Light worldLightTwo(glm::vec3(-1.0f, 2.0f, -1.0f), glm::vec3(1.0f), 0.5f);
   vector<Light> lights;
   lights.push_back(worldLightOne);
   lights.push_back(worldLightTwo);
@@ -478,15 +478,15 @@ void sceneReflections(int width, int height, std::vector<std::shared_ptr<Materia
 
   Image image(width, height);
   // Make shapes and push them to vector
-  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(0.5f, -0.7f, 0.5f), 1.0f, 0.3f, 0.0f, materials[0]);
-  shared_ptr<Shape> blueSphere = make_shared<Sphere>(vec3(1.0f, -0.7f, 0.0f), 1.0f, 0.3f, 0.0f, materials[2]);
-  shared_ptr<Shape> floor = make_shared<Plane>(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
-  shared_ptr<Shape> wall = make_shared<Plane>(vec3(0.0f, 0.0f, -3.0f), vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(glm::vec3(0.5f, -0.7f, 0.5f), 1.0f, 0.3f, 0.0f, materials[0]);
+  shared_ptr<Shape> blueSphere = make_shared<Sphere>(glm::vec3(1.0f, -0.7f, 0.0f), 1.0f, 0.3f, 0.0f, materials[2]);
+  shared_ptr<Shape> floor = make_shared<Plane>(glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
+  shared_ptr<Shape> wall = make_shared<Plane>(glm::vec3(0.0f, 0.0f, -3.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
   // Rotate wall
-  wall->setRotationAxis(vec3(1.0f, 0.0f, 0.0f));
+  wall->setRotationAxis(glm::vec3(1.0f, 0.0f, 0.0f));
   wall->setRotationAngle(90.0f);
-  shared_ptr<Shape> reflSphere = make_shared<Sphere>(vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[4]);
-  shared_ptr<Shape> reflSphereTwo = make_shared<Sphere>(vec3(1.5f, 0.0f, -1.5f), 1.0f, 1.0f, 0.0f, materials[4]);
+  shared_ptr<Shape> reflSphere = make_shared<Sphere>(glm::vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[4]);
+  shared_ptr<Shape> reflSphereTwo = make_shared<Sphere>(glm::vec3(1.5f, 0.0f, -1.5f), 1.0f, 1.0f, 0.0f, materials[4]);
   shapes.push_back(redSphere);
   shapes.push_back(blueSphere);
   shapes.push_back(floor);
@@ -495,8 +495,8 @@ void sceneReflections(int width, int height, std::vector<std::shared_ptr<Materia
   shapes.push_back(reflSphereTwo);
   // Make lights and push them to vector
   vector<Light> lights;
-  Light worldLight(vec3(-1.0f, 2.0f, 1.0f), vec3(1.0f), 0.5f);
-  Light worldLightTwo(vec3(0.5f, -0.5f, 0.0f), vec3(1.0f), 0.5f);
+  Light worldLight(glm::vec3(-1.0f, 2.0f, 1.0f), glm::vec3(1.0f), 0.5f);
+  Light worldLightTwo(glm::vec3(0.5f, -0.5f, 0.0f), glm::vec3(1.0f), 0.5f);
   lights.push_back(worldLight);
   lights.push_back(worldLightTwo);
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, SCENE);
@@ -512,7 +512,7 @@ void sceneMesh(int width, int height, std::vector<std::shared_ptr<Material>> mat
   shared_ptr<Shape> mesh = make_shared<Mesh>(posBuf, zBuf, norBuf, texBuf, boundSphere, materials[5]);
   shapes.push_back(mesh);
   vector<Light> lights;
-  Light worldLight(vec3(-1.0f, 1.0f, 1.0f), vec3(1.0f), 1.0f);
+  Light worldLight(glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(1.0f), 1.0f);
   lights.push_back(worldLight);
 
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 6);
@@ -531,13 +531,13 @@ void sceneMeshTransform(int width, int height, std::vector<std::shared_ptr<Mater
                         std::shared_ptr<Camera> &cam, std::string FILENAME, std::vector<float> &posBuf, std::vector<float> &zBuf,
                         std::vector<float> &norBuf, std::vector<float> &texBuf) {
   Image image(width, height);
-  mat4 E = mat4(vec4(1.5f, 0.0f, 0.0f, 0.0f), vec4(0.0f, 1.4095f, 0.5130f, 0.0f), vec4(0.0f, -0.5130f, 1.4095f, 0.0f),
-                vec4(0.3f, -1.5f, 0.0f, 1.0f));
+  glm::mat4 E = glm::mat4(glm::vec4(1.5f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.4095f, 0.5130f, 0.0f), glm::vec4(0.0f, -0.5130f, 1.4095f, 0.0f),
+                glm::vec4(0.3f, -1.5f, 0.0f, 1.0f));
   BoundingSphere boundSphere(posBuf);
   shared_ptr<Shape> mesh = make_shared<Mesh>(posBuf, zBuf, norBuf, texBuf, boundSphere, materials[5]);
   shapes.push_back(mesh);
   vector<Light> lights;
-  Light worldLight(vec3(-1.0f, 1.0f, 1.0f), vec3(1.0f), 1.0f);
+  Light worldLight(glm::vec3(-1.0f, 1.0f, 1.0f), glm::vec3(1.0f), 1.0f);
   lights.push_back(worldLight);
 
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 7, E);
@@ -549,19 +549,19 @@ void sceneCameraTransform(int width, int height, std::vector<std::shared_ptr<Mat
 
   Image image(width, height);
   // Sphere(glm::vec3 position, float radius, float scale, float rotAngle, std::shared_ptr<Material> material) : Shape() {
-  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
-  shared_ptr<Shape> greenSphere = make_shared<Sphere>(vec3(0.5f, -1.0f, -1.0f), 1.0f, 1.0f, 0.0f, materials[1]);
-  shared_ptr<Shape> blueSphere = make_shared<Sphere>(vec3(0.0f, 1.0f, 0.0f), 1.0f, 1.0f, 0.0f, materials[2]);
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(glm::vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
+  shared_ptr<Shape> greenSphere = make_shared<Sphere>(glm::vec3(0.5f, -1.0f, -1.0f), 1.0f, 1.0f, 0.0f, materials[1]);
+  shared_ptr<Shape> blueSphere = make_shared<Sphere>(glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 1.0f, 0.0f, materials[2]);
   shapes.push_back(redSphere);
   shapes.push_back(greenSphere);
   shapes.push_back(blueSphere);
-  Light worldLight(vec3(-2.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f);
+  Light worldLight(glm::vec3(-2.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f), 1.0f);
   vector<Light> lights;
   lights.push_back(worldLight);
   // init position(0.0f, 0.0f, 5.0f)
-  cam->translateCamera(vec3(-3.0f, 0.0f, -5.0f));
+  cam->translateCamera(glm::vec3(-3.0f, 0.0f, -5.0f));
   cam->setFOV(glm::radians(60.0f));
-  cam->setTarget(vec3(0.0f, 0.0f, 0.0f)); // Look at origin
+  cam->setTarget(glm::vec3(0.0f, 0.0f, 0.0f)); // Look at origin
 
   genScenePixels(image, width, height, cam, shapes, hits, lights, FILENAME, 1);
 }
@@ -570,25 +570,25 @@ void sceneMonteCarlo(int width, int height, std::vector<std::shared_ptr<Material
                      std::vector<std::shared_ptr<Shape>> &shapes, std::vector<std::shared_ptr<Hit>> &hits,
                      std::shared_ptr<Camera> &cam, std::string FILENAME) {
   Image image(width, height);
-  mat4 E = mat4(vec4(1.5f, 0.0f, 0.0f, 0.0f), vec4(0.0f, 1.4095f, 0.5130f, 0.0f), vec4(0.0f, -0.5130f, 1.4095f, 0.0f),
-                vec4(0.3f, -1.5f, 0.0f, 1.0f));
+  glm::mat4 E = glm::mat4(glm::vec4(1.5f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.4095f, 0.5130f, 0.0f), glm::vec4(0.0f, -0.5130f, 1.4095f, 0.0f),
+                glm::vec4(0.3f, -1.5f, 0.0f, 1.0f));
   // Make scene
-  shared_ptr<Shape> redSphere = make_shared<Sphere>(vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
-  redSphere->getMaterial()->setMaterialKE(vec3(0.0f));
-  shared_ptr<Shape> reflSphere = make_shared<Sphere>(vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[4]);
-  reflSphere->getMaterial()->setMaterialKE(vec3(0.0f));
-  shared_ptr<Shape> floor = make_shared<Plane>(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
-  floor->getMaterial()->setMaterialKE(vec3(0.0f));
-  shared_ptr<Shape> backWall = make_shared<Plane>(vec3(0.0f, 0.0f, -3.0f), vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
-  backWall->getMaterial()->setMaterialKE(vec3(0.0f));
+  shared_ptr<Shape> redSphere = make_shared<Sphere>(glm::vec3(-0.5f, -1.0f, 1.0f), 1.0f, 1.0f, 0.0f, materials[0]);
+  redSphere->getMaterial()->setMaterialKE(glm::vec3(0.0f));
+  shared_ptr<Shape> reflSphere = make_shared<Sphere>(glm::vec3(-0.5f, 0.0f, -0.5f), 1.0f, 1.0f, 0.0f, materials[4]);
+  reflSphere->getMaterial()->setMaterialKE(glm::vec3(0.0f));
+  shared_ptr<Shape> floor = make_shared<Plane>(glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
+  floor->getMaterial()->setMaterialKE(glm::vec3(0.0f));
+  shared_ptr<Shape> backWall = make_shared<Plane>(glm::vec3(0.0f, 0.0f, -3.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.0f, materials[3]);
+  backWall->getMaterial()->setMaterialKE(glm::vec3(0.0f));
   // Rotate wall
-  backWall->setRotationAxis(vec3(1.0f, 0.0f, 0.0f));
+  backWall->setRotationAxis(glm::vec3(1.0f, 0.0f, 0.0f));
   backWall->setRotationAngle(90.0f);
   // Make an emmissive light
-  shared_ptr<Shape> blueLight = make_shared<Sphere>(vec3(1.5f, 0.5f, 1.0f), 1.0f, 0.8f, 0.0f, materials[2]);
-  blueLight->getMaterial()->setMaterialKE(vec3(0.0f, 0.0f, 1.0f)); // Make emmissive
+  shared_ptr<Shape> blueLight = make_shared<Sphere>(glm::vec3(1.5f, 0.5f, 1.0f), 1.0f, 0.8f, 0.0f, materials[2]);
+  blueLight->getMaterial()->setMaterialKE(glm::vec3(0.0f, 0.0f, 1.0f)); // Make emmissive
   // Lights
-  Light worldLight(vec3(1.5f, 0.5f, 1.0f), vec3(0.0f, 0.0f, 1.0f), 1.0f);
+  Light worldLight(glm::vec3(1.5f, 0.5f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), 1.0f);
   vector<Light> lights;
   lights.push_back(worldLight);
   shapes.push_back(redSphere);

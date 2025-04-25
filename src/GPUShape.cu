@@ -2,8 +2,7 @@
 #include <math.h>
 
 
-HD GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 modelMat, const mat4 modelMatInv,
-	const GPULight *lights) {
+HD GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 modelMat, const mat4 modelMatInv) {
 	GPUHit *hit = NULL; // assume collision is false
 	switch (s->type) {
 		case GPUShapeType::SPHERE: {
@@ -31,7 +30,7 @@ HD GPUHit* computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 
 			}
 
 			// Else, colllision so solve for t (intersections)
-			float sqrtDiscriminant = sqrt(discriminant);
+			float sqrtDiscriminant = GPUsqrtf(discriminant);
 			float t = (-b - sqrtDiscriminant) / (2.0f * a);
 
 			// Behind camera, count as miss look at other t val

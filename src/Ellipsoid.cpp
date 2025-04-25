@@ -1,10 +1,10 @@
 #include "Ellipsoid.h"
 
-using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt, glm::vec3, glm::vec4, glm::mat4;
+using std::vector, std::shared_ptr, std::make_shared, std::string, std::sqrt;
 
 // Help from ChatGPT
 // Compute intersections of ray with shape in order to create the shading
-shared_ptr<Hit> Ellipsoid::computeIntersection(const Ray &ray, const mat4 modelMat, const mat4 modelMatInv,
+shared_ptr<Hit> Ellipsoid::computeIntersection(const Ray &ray, const glm::mat4 modelMat, const glm::mat4 modelMatInv,
                                                const vector<Light> &lights) {
   shared_ptr<Hit> hit = make_shared<Hit>(); // assume collision is false
 
@@ -18,7 +18,7 @@ shared_ptr<Hit> Ellipsoid::computeIntersection(const Ray &ray, const mat4 modelM
 
   // Compute quadratic equation
   float a, b, c, discriminant;
-  vec3 oc = localOrigin;
+  glm::vec3 oc = localOrigin;
   a = glm::dot(localDirection, localDirection);
   b = 2.0f * glm::dot(oc, localDirection);
   c = glm::dot(oc, oc) - getRadius() * getRadius();
@@ -43,12 +43,12 @@ shared_ptr<Hit> Ellipsoid::computeIntersection(const Ray &ray, const mat4 modelM
   }
 
   // Object space ray hit
-  vec3 localHitPoint = localOrigin + t * localDirection;
-  vec3 localNormal = glm::normalize(localHitPoint); // For sphere
+  glm::vec3 localHitPoint = localOrigin + t * localDirection;
+  glm::vec3 localNormal = glm::normalize(localHitPoint); // For sphere
 
   // World space ray hit (dividie by w to enter eye space)
-  vec4 worldHitPoint4 = modelMat * glm::vec4(localHitPoint, 1.0f);
-  vec3 worldHitPoint = glm::vec3(worldHitPoint4) / worldHitPoint4.w;
+  glm::vec4 worldHitPoint4 = modelMat * glm::vec4(localHitPoint, 1.0f);
+  glm::vec3 worldHitPoint = glm::vec3(worldHitPoint4) / worldHitPoint4.w;
 
   // Transform normal to world space
   glm::mat4 invTransModel = glm::transpose(modelMatInv);
@@ -63,8 +63,8 @@ shared_ptr<Hit> Ellipsoid::computeIntersection(const Ray &ray, const mat4 modelM
 
   // Ray hit
   hit->t = t_world;
-  vec3 P = worldHitPoint; // Intersection point
-  vec3 N = worldNormal;   // Normal at intersection point
+  glm::vec3 P = worldHitPoint; // Intersection point
+  glm::vec3 N = worldNormal;   // Normal at intersection point
   hit->x = P;
   hit->n = N;
 

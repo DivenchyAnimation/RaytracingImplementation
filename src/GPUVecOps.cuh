@@ -174,10 +174,12 @@ struct mat4 {
 
 
 // vec3 operations
+HD inline vec3 operator+(const vec3 &a, const vec3 &b) { return vec3(a.x + b.x, a.y + b.y, a.z + b.z); };
 HD inline vec3 operator*(float scalar, const vec3 &vec) { return vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar); };
+HD inline vec3 operator*(const vec3 &vec, float scalar) { return vec3(vec.x * scalar, vec.y * scalar, vec.z * scalar); };
 HD inline vec3 operator-(const vec3 &a, const vec3 &b) { return vec3(a.x - b.x, a.y - b.y, a.z - b.z); };
 
-HD inline vec3 cross(const vec3 &a, const vec3 &b) {
+HD inline vec3 GPUcross(const vec3 &a, const vec3 &b) {
 	return vec3(
 		a.y * b.z - a.z * b.y,
 		a.z * b.x - a.x * b.z,
@@ -211,17 +213,17 @@ HD inline float GPUdot(vec4 a, vec4 b) {
 }
 
 HD inline vec3 GPUnormalize(vec3 vector) {
-	float dot = sqrtf(GPUdot(vector, vector));
+	float dot = GPUsqrtf(GPUdot(vector, vector));
 	return vector / dot;
 };
 
 HD inline vec4 GPUnormalize(vec4 vector) {
-	float dot = sqrtf(GPUdot(vector, vector));
+	float dot = GPUsqrtf(GPUdot(vector, vector));
 	return vector / dot;
 }
 
-HD inline float GPUlength(const vec3 &v) { return sqrt(GPUdot(v, v)); }
-HD inline float GPUlength(const vec4 &v) { return sqrt(GPUdot(v, v)); }
+HD inline float GPUlength(const vec3 &v) { return GPUsqrtf(GPUdot(v, v)); }
+HD inline float GPUlength(const vec4 &v) { return GPUsqrtf(GPUdot(v, v)); }
 
 // Help from ChatGPT with next two
 HD inline mat4 GPUtranslate(const mat4 &M, const vec3 &t) {
@@ -393,9 +395,9 @@ HD inline mat4 GPULookAt(const vec3 &eye,
 	// 2a) forward vector
 	vec3 f = GPUnormalize(center - eye);
 	// 2b) right vector
-	vec3 s = GPUnormalize(cross(f, up));
+	vec3 s = GPUnormalize(GPUcross(f, up));
 	// 2c) true up
-	vec3 u = cross(s, f);
+	vec3 u = GPUcross(s, f);
 
 	// 3) build row-major view matrix
 	mat4 M; // identity
@@ -412,7 +414,12 @@ HD inline mat4 GPULookAt(const vec3 &eye,
 }
 // Misc
 
-HD inline float GPUmax(const float a, const float b) { return (a > b ? a : b); };
+HD inline float GPUMax(const float a, const float b) { return (a > b ? a : b); };
+HD inline float GPUMin(const float a, const float b) { return (a > b ? b : a); };
 HD inline float GPUabs(const float a) { return (a <= 0 ? a * -1 : a); };
 HD inline float GPUabs(const int a) { return (a <= 0 ? a * -1 : a); };
-HD inline float GPUradians(const float angle) { return angle * (CUDA_PI / 180.0f); }
+HD inline float GPUradians(const float angle) { return angle * (CUDA_PI / 180.0f); };
+HD inline vec3 GPUMix(const vec3 &x, const vec3 &y, float alpha) { return x * (1.0f - alpha) + y * alpha; };
+HD inline float GPUClampf(float a, float minVal, float maxVal) { return GPUMin(GPUMax(a, minVal), maxVal); };
+HD inline float GPUClampf(const float a) { return GPUClampf(a, 0.0f, 1.0f); }; // 0 to 1 range clamp
+

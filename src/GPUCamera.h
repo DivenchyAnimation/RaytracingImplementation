@@ -2,7 +2,7 @@
 #ifndef GPUCAMERA_H
 #define GPUCAMERA_H
 
-#include "GPUVecOps.h"
+#include "GPUVecOps.cuh"
 
 struct GPUCamera {
 	enum { ROTATE = 0, TRANSLATE, SCALE };

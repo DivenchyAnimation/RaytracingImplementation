@@ -1,9 +1,9 @@
 #pragma once
 #include <cuda_runtime.h>
 #include "Image.h"
-#include "GPUCamera.cuh"
+#include "GPUCamera.h"
 #include "CommonCUDA.cuh"
-#include "GPUVecOps.h"
+#include "GPUVecOps.cuh"
 #include "GPUHit.h"
 #include "GPURay.h"
 #include "GPULight.h"

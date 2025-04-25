@@ -1,5 +1,5 @@
 #pragma once
-#include "GPUVecOps.h"
+#include "GPUVecOps.cuh"
 
 struct GPULight {
   vec3 pos;
