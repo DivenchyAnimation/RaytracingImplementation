@@ -15,7 +15,7 @@ __global__ void fillRedKernel(unsigned char *d_pixels, int numPixels) {
 // Beginning of helpers
 HD mat4 buildMVMat(GPUShape *s, mat4 E) {
     mat4 modelMat = GPUtranslate(mat4(), s->position);
-    modelMat = modelMat * E;
+    modelMat = E * modelMat;
 
     return modelMat;
 }
@@ -126,6 +126,8 @@ HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShap
 
     // If hit exists, do shadows
     if (nearestHit.collision == true) {
+        // Sanity check
+        return nearestHit.collisionShape->material.getMaterialKD();
         // init color to ambient
         finalColor = nearestHit.collisionShape->material.getMaterialKA();
         for (int i = 0; i < nLights; i++) {
