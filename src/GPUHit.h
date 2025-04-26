@@ -8,6 +8,7 @@ struct GPUHit {
   vec3 color; // color at hit (shading applied)
   bool collision = false;
   GPUShape *collisionShape = NULL; // shape that was hit
+  int collisionShapeIdx = 0;
 
   HD GPUHit() {
 	  this->x = vec3(0.0f);

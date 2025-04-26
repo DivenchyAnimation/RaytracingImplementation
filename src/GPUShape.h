@@ -27,4 +27,4 @@ struct GPUShape {
 	HD GPUShape(vec3 pos, vec3 rot, vec3 scale, float rotAngle, GPUMaterial material, bool isRefl) : position(pos), rotation(rot), scale(scale), rotationAngle(rotAngle), material(material), isReflective(isRefl) {};
 };
 
-HD GPUHit computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 modelMat, const mat4 modelMatInv);
+HD GPUHit computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 &modelMat, const mat4 &modelMatInv);

@@ -189,20 +189,20 @@ HD inline mat4 GPUtranspose(const mat4 &m) {
 
 
 // Linear algebra
-HD inline float GPUdot(vec3 a, vec3 b) {
+HD inline float GPUdot(const vec3 &a, const vec3 &b) {
 	return (a.x * b.x + a.y * b.y + a.z * b.z);
 }
 
-HD inline float GPUdot(vec4 a, vec4 b) {
+HD inline float GPUdot(const vec4 &a, const vec4 &b) {
 	return (a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w);
 }
 
-HD inline vec3 GPUnormalize(vec3 vector) {
+HD inline vec3 GPUnormalize(vec3 &vector) {
 	float dot = GPUsqrtf(GPUdot(vector, vector));
 	return vector / dot;
 };
 
-HD inline vec4 GPUnormalize(vec4 vector) {
+HD inline vec4 GPUnormalize(vec4 &vector) {
 	float dot = GPUsqrtf(GPUdot(vector, vector));
 	return vector / dot;
 }
@@ -230,148 +230,41 @@ HD inline mat4 GPUscale(const mat4 &M, const vec3 &s) {
 }
 
 // Provided by ChatGPT
-HD inline mat4 GPUinverse(const mat4 &m)
-{
-	// Shortcut to access m.matrix[r][c]
-#define M(r,c)  m.matrix[r][c]
+HD inline mat4 GPUInverse(const mat4 &m) {
+	float a00 = m[0][0], a01 = m[0][1], a02 = m[0][2];
+	float a10 = m[1][0], a11 = m[1][1], a12 = m[1][2];
+	float a20 = m[2][0], a21 = m[2][1], a22 = m[2][2];
 
-	mat4 inv;
-
-	inv.matrix[0][0] = M(1, 1) * M(2, 2) * M(3, 3)
-		- M(1, 1) * M(2, 3) * M(3, 2)
-		- M(2, 1) * M(1, 2) * M(3, 3)
-		+ M(2, 1) * M(1, 3) * M(3, 2)
-		+ M(3, 1) * M(1, 2) * M(2, 3)
-		- M(3, 1) * M(1, 3) * M(2, 2);
-
-	inv.matrix[0][1] = -M(0, 1) * M(2, 2) * M(3, 3)
-		+ M(0, 1) * M(2, 3) * M(3, 2)
-		+ M(2, 1) * M(0, 2) * M(3, 3)
-		- M(2, 1) * M(0, 3) * M(3, 2)
-		- M(3, 1) * M(0, 2) * M(2, 3)
-		+ M(3, 1) * M(0, 3) * M(2, 2);
-
-	inv.matrix[0][2] = M(0, 1) * M(1, 2) * M(3, 3)
-		- M(0, 1) * M(1, 3) * M(3, 2)
-		- M(1, 1) * M(0, 2) * M(3, 3)
-		+ M(1, 1) * M(0, 3) * M(3, 2)
-		+ M(3, 1) * M(0, 2) * M(1, 3)
-		- M(3, 1) * M(0, 3) * M(1, 2);
-
-	inv.matrix[0][3] = -M(0, 1) * M(1, 2) * M(2, 3)
-		+ M(0, 1) * M(1, 3) * M(2, 2)
-		+ M(1, 1) * M(0, 2) * M(2, 3)
-		- M(1, 1) * M(0, 3) * M(2, 2)
-		- M(2, 1) * M(0, 2) * M(1, 3)
-		+ M(2, 1) * M(0, 3) * M(1, 2);
-
-	inv.matrix[1][0] = -M(1, 0) * M(2, 2) * M(3, 3)
-		+ M(1, 0) * M(2, 3) * M(3, 2)
-		+ M(2, 0) * M(1, 2) * M(3, 3)
-		- M(2, 0) * M(1, 3) * M(3, 2)
-		- M(3, 0) * M(1, 2) * M(2, 3)
-		+ M(3, 0) * M(1, 3) * M(2, 2);
-
-	inv.matrix[1][1] = M(0, 0) * M(2, 2) * M(3, 3)
-		- M(0, 0) * M(2, 3) * M(3, 2)
-		- M(2, 0) * M(0, 2) * M(3, 3)
-		+ M(2, 0) * M(0, 3) * M(3, 2)
-		+ M(3, 0) * M(0, 2) * M(2, 3)
-		- M(3, 0) * M(0, 3) * M(2, 2);
-
-	inv.matrix[1][2] = -M(0, 0) * M(1, 2) * M(3, 3)
-		+ M(0, 0) * M(1, 3) * M(3, 2)
-		+ M(1, 0) * M(0, 2) * M(3, 3)
-		- M(1, 0) * M(0, 3) * M(3, 2)
-		- M(3, 0) * M(0, 2) * M(1, 3)
-		+ M(3, 0) * M(0, 3) * M(1, 2);
-
-	inv.matrix[1][3] = M(0, 0) * M(1, 2) * M(2, 3)
-		- M(0, 0) * M(1, 3) * M(2, 2)
-		- M(1, 0) * M(0, 2) * M(2, 3)
-		+ M(1, 0) * M(0, 3) * M(2, 2)
-		+ M(2, 0) * M(0, 2) * M(1, 3)
-		- M(2, 0) * M(0, 3) * M(1, 2);
-
-	inv.matrix[2][0] = M(1, 0) * M(2, 1) * M(3, 3)
-		- M(1, 0) * M(2, 3) * M(3, 1)
-		- M(2, 0) * M(1, 1) * M(3, 3)
-		+ M(2, 0) * M(1, 3) * M(3, 1)
-		+ M(3, 0) * M(1, 1) * M(2, 3)
-		- M(3, 0) * M(1, 3) * M(2, 1);
-
-	inv.matrix[2][1] = -M(0, 0) * M(2, 1) * M(3, 3)
-		+ M(0, 0) * M(2, 3) * M(3, 1)
-		+ M(2, 0) * M(0, 1) * M(3, 3)
-		- M(2, 0) * M(0, 3) * M(3, 1)
-		- M(3, 0) * M(0, 1) * M(2, 3)
-		+ M(3, 0) * M(0, 3) * M(2, 1);
-
-	inv.matrix[2][2] = M(0, 0) * M(1, 1) * M(3, 3)
-		- M(0, 0) * M(1, 3) * M(3, 1)
-		- M(1, 0) * M(0, 1) * M(3, 3)
-		+ M(1, 0) * M(0, 3) * M(3, 1)
-		+ M(3, 0) * M(0, 1) * M(1, 3)
-		- M(3, 0) * M(0, 3) * M(1, 1);
-
-	inv.matrix[2][3] = -M(0, 0) * M(1, 1) * M(2, 3)
-		+ M(0, 0) * M(1, 3) * M(2, 1)
-		+ M(1, 0) * M(0, 1) * M(2, 3)
-		- M(1, 0) * M(0, 3) * M(2, 1)
-		- M(2, 0) * M(0, 1) * M(1, 3)
-		+ M(2, 0) * M(0, 3) * M(1, 1);
-
-	inv.matrix[3][0] = -M(1, 0) * M(2, 1) * M(3, 2)
-		+ M(1, 0) * M(2, 2) * M(3, 1)
-		+ M(2, 0) * M(1, 1) * M(3, 2)
-		- M(2, 0) * M(1, 2) * M(3, 1)
-		- M(3, 0) * M(1, 1) * M(2, 2)
-		+ M(3, 0) * M(1, 2) * M(2, 1);
-
-	inv.matrix[3][1] = M(0, 0) * M(2, 1) * M(3, 2)
-		- M(0, 0) * M(2, 2) * M(3, 1)
-		- M(2, 0) * M(0, 1) * M(3, 2)
-		+ M(2, 0) * M(0, 2) * M(3, 1)
-		+ M(3, 0) * M(0, 1) * M(2, 2)
-		- M(3, 0) * M(0, 2) * M(2, 1);
-
-	inv.matrix[3][2] = -M(0, 0) * M(1, 1) * M(3, 2)
-		+ M(0, 0) * M(1, 2) * M(3, 1)
-		+ M(1, 0) * M(0, 1) * M(3, 2)
-		- M(1, 0) * M(0, 2) * M(3, 1)
-		- M(3, 0) * M(0, 1) * M(1, 2)
-		+ M(3, 0) * M(0, 2) * M(1, 1);
-
-	inv.matrix[3][3] = M(0, 0) * M(1, 1) * M(2, 2)
-		- M(0, 0) * M(1, 2) * M(2, 1)
-		- M(1, 0) * M(0, 1) * M(2, 2)
-		+ M(1, 0) * M(0, 2) * M(2, 1)
-		+ M(2, 0) * M(0, 1) * M(1, 2)
-		- M(2, 0) * M(0, 2) * M(1, 1);
-
-	// Compute determinant via first row expansion
-	float det =
-		M(0, 0) * inv.matrix[0][0] +
-		M(0, 1) * inv.matrix[1][0] +
-		M(0, 2) * inv.matrix[2][0] +
-		M(0, 3) * inv.matrix[3][0];
-
-	if (det == 0.0f) {
-		// Non-invertible; return identity
-		return mat4();
-	}
-
-	// Scale the adjugate by 1/det
+	float det = a00 * (a11 * a22 - a12 * a21)
+		- a01 * (a10 * a22 - a12 * a20)
+		+ a02 * (a10 * a21 - a11 * a20);
 	float invDet = 1.0f / det;
-	for (int i = 0; i < 4; ++i) {
-		for (int j = 0; j < 4; ++j) {
-			inv.matrix[i][j] *= invDet;
-		}
-	}
 
-#undef M
+	mat4 inv;                           // we'll fill only [0..2][0..2] and [0..2][3]
+	inv[0][0] = (a11 * a22 - a12 * a21) * invDet;
+	inv[1][0] = -(a10 * a22 - a12 * a20) * invDet;
+	inv[2][0] = (a10 * a21 - a11 * a20) * invDet;
+
+	inv[0][1] = -(a01 * a22 - a02 * a21) * invDet;
+	inv[1][1] = (a00 * a22 - a02 * a20) * invDet;
+	inv[2][1] = -(a00 * a21 - a01 * a20) * invDet;
+
+	inv[0][2] = (a01 * a12 - a02 * a11) * invDet;
+	inv[1][2] = -(a00 * a12 - a02 * a10) * invDet;
+	inv[2][2] = (a00 * a11 - a01 * a10) * invDet;
+
+	vec3 t(m[0][3], m[1][3], m[2][3]);
+
+	inv[0][3] = -(inv[0][0] * t.x + inv[0][1] * t.y + inv[0][2] * t.z);
+	inv[1][3] = -(inv[1][0] * t.x + inv[1][1] * t.y + inv[1][2] * t.z);
+	inv[2][3] = -(inv[2][0] * t.x + inv[2][1] * t.y + inv[2][2] * t.z);
+
+	inv[3][0] = inv[3][1] = inv[3][2] = 0.0f;
+	inv[3][3] = 1.0f;
+
 	return inv;
 }
+
 
 HD inline mat4 GPULookAt(const vec3 &eye,
 	const vec3 &center,
@@ -399,11 +292,11 @@ HD inline mat4 GPULookAt(const vec3 &eye,
 }
 // Misc
 
-HD inline float GPUMax(const float a, const float b) { return (a > b ? a : b); };
-HD inline float GPUMin(const float a, const float b) { return (a > b ? b : a); };
-HD inline float GPUabs(const float a) { return (a <= 0 ? a * -1 : a); };
-HD inline float GPUabs(const int a) { return (a <= 0 ? a * -1 : a); };
-HD inline float GPUradians(const float angle) { return angle * (CUDA_PI / 180.0f); };
+HD inline float GPUMax(const float &a, const float &b) { return (a > b ? a : b); };
+HD inline float GPUMin(const float &a, const float &b) { return (a > b ? b : a); };
+HD inline float GPUabs(const float &a) { return (a <= 0 ? a * -1 : a); };
+HD inline float GPUabs(const int &a) { return (a <= 0 ? a * -1 : a); };
+HD inline float GPUradians(const float &angle) { return angle * (CUDA_PI / 180.0f); };
 HD inline vec3 GPUMix(const vec3 &x, const vec3 &y, float alpha) { return x * (1.0f - alpha) + y * alpha; };
 HD inline float GPUClampf(float a, float minVal, float maxVal) { return GPUMin(GPUMax(a, minVal), maxVal); };
 HD inline float GPUClampf(const float a) { return GPUClampf(a, 0.0f, 1.0f); }; // 0 to 1 range clamp

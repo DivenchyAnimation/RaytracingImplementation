@@ -8,20 +8,20 @@ struct GPUCamera {
 	enum { ROTATE = 0, TRANSLATE, SCALE };
 
 	HD GPUCamera();
-	virtual ~GPUCamera();
-	void setInitDistance(float z) { translations.z = -GPUabs(z); }
-	void setAspect(float a) { aspect = a; };
-	void setRotationFactor(float f) { rfactor = f; };
-	void setTranslationFactor(float f) { tfactor = f; };
-	void setScaleFactor(float f) { sfactor = f; };
-	float getFOVY() { return fovy; };
-	vec3 getPosition() const { return position; }
-	void translateCamera(vec3 translation) { this->position += translation; }
-	void setFOV(float f) { this->fovy = f; }
-	void setTarget(vec3 target) { this->target = target; }
-	mat4 getViewMatrix() const { return GPULookAt(position, target, worldUp); }
-	vec3 getTarget() const { return target; }
-	vec3 getWorldUp() const { return worldUp; }
+	HD virtual ~GPUCamera();
+	HD void setInitDistance(float z) { translations.z = -GPUabs(z); }
+	HD void setAspect(float a) { aspect = a; };
+	HD void setRotationFactor(float f) { rfactor = f; };
+	HD void setTranslationFactor(float f) { tfactor = f; };
+	HD void setScaleFactor(float f) { sfactor = f; };
+	HD float getFOVY() { return fovy; };
+	HD vec3 getPosition() const { return position; }
+	HD void translateCamera(vec3 translation) { this->position += translation; }
+	HD void setFOV(float f) { this->fovy = f; }
+	HD void setTarget(vec3 target) { this->target = target; }
+	HD mat4 getViewMatrix() const { return GPULookAt(position, target, worldUp); }
+	HD vec3 getTarget() const { return target; }
+	HD vec3 getWorldUp() const { return worldUp; }
 
 	float aspect;
 	float fovy;
