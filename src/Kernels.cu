@@ -10,8 +10,6 @@ __global__ void fillRedKernel(unsigned char *d_pixels, int numPixels) {
     d_pixels[base + 2] = 0; // B
 }
 
-
-
 // Beginning of helpers
 HD mat4 buildMVMat(GPUShape *s, mat4 E) {
     mat4 modelMat = GPUtranslate(mat4(), s->position);
@@ -20,7 +18,7 @@ HD mat4 buildMVMat(GPUShape *s, mat4 E) {
     return modelMat;
 }
 
-HD bool isInShadow(GPUHit &nearestHit, const GPULight &light, GPUShape **shapes, int nShapes) {
+HD bool isInShadow(GPUHit &nearestHit, const GPULight &light, GPUShape **shapes, int nShapes, mat4 &E) {
 
     // Shadow test for each light
     float epsilon = 0.001f;
@@ -30,20 +28,16 @@ HD bool isInShadow(GPUHit &nearestHit, const GPULight &light, GPUShape **shapes,
     float lightDistance = GPUlength(light.pos - shadowOrigin);
 
     for (int i = 0; i < nShapes; i++) {
-        const GPUShape *shape = shapes[i];
-        if (shape->type == GPUShapeType::PLANE) {
+        if (shapes[i]->type == GPUShapeType::PLANE) {
             continue;
         }
-        if (nearestHit.collisionShape == shape) {
+        if (nearestHit.collisionShape == shapes[i]) {
             continue; // Don't double count shape that caused initial hit
         }
         // Create Model matrix and apply transformations
-        mat4 modelMat = GPUtranslate(mat4(), shape->position);
-        modelMat = GPUscale(modelMat, shape->scale);
-
-        // Obatain inv so that ray is in object space
+        mat4 modelMat = buildMVMat(shapes[i], E);
         mat4 modelMatInv = GPUInverse(modelMat);
-        GPUHit shadowHit = computeIntersection(shape, shadowRay, modelMat, modelMatInv);
+        GPUHit shadowHit = computeIntersection(shapes[i], shadowRay, modelMat, modelMatInv);
 
         // If a collision occurs and the distance is less than the light's, then this light is occluded.
         if (shadowHit.collision && (shadowHit.t > 0) && (shadowHit.t < lightDistance)) {
@@ -53,8 +47,8 @@ HD bool isInShadow(GPUHit &nearestHit, const GPULight &light, GPUShape **shapes,
     return false;
 }
 
-HD vec3 KernelCalcLightContribution(const GPULight &light, GPUHit &nearestHit, GPURay &ray, GPUShape **shapes, int nShapes) {
-    bool isOccluded = isInShadow(nearestHit, light, shapes, nShapes);
+HD vec3 KernelCalcLightContribution(const GPULight &light, GPUHit &nearestHit, GPURay &ray, GPUShape **shapes, int nShapes, mat4 &E) {
+    bool isOccluded = isInShadow(nearestHit, light, shapes, nShapes, E);
 
     // For now, use binary shadowing.
     float shadowFactor = isOccluded ? 0.0f : 1.0f;
@@ -98,7 +92,7 @@ HD GPURay GPUGenRayForPixel(int x, int y, int width, int height, GPUCamera *cam)
     return GPURay(camPos, rayDirWorld);
 }
 
-HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShapes, GPULight *lights, int nLights, int depth, mat4 E) {
+HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShapes, GPULight *lights, int nLights, int depth, mat4 &E) {
     // No more bounces
     if (depth <= 0) {
         return vec3(0.0f);
@@ -127,11 +121,11 @@ HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShap
     // If hit exists, do shadows
     if (nearestHit.collision == true) {
         // Sanity check
-        return nearestHit.collisionShape->material.getMaterialKD();
+        //return nearestHit.collisionShape->material.getMaterialKD();
         // init color to ambient
         finalColor = nearestHit.collisionShape->material.getMaterialKA();
         for (int i = 0; i < nLights; i++) {
-            finalColor += KernelCalcLightContribution(lights[i], nearestHit, ray, shapes, nShapes);
+            finalColor += KernelCalcLightContribution(lights[i], nearestHit, ray, shapes, nShapes, E);
         }
     }
     else {
@@ -164,7 +158,7 @@ __global__ void KernelGenScenePixels(unsigned char *d_pixels, int numPixels, int
     if (idx >= numPixels) return;
 
     int x = idx % width;
-    int y = idx / height;
+    int y = idx / width;
 
     GPURay ray = GPUGenRayForPixel(x, y, width, height, cam);
     GPUHit nearestHit;
@@ -189,15 +183,5 @@ __global__ void KernelGenScenePixels(unsigned char *d_pixels, int numPixels, int
     d_pixels[3 * idx + 0] = (unsigned char)(GPUClampf(finalColor.x) * 255);
     d_pixels[3 * idx + 1] = (unsigned char)(GPUClampf(finalColor.y) * 255);
     d_pixels[3 * idx + 2] = (unsigned char)(GPUClampf(finalColor.z) * 255);
-
-    // Test if collisionIntersection func works at all (it does)
-    //if (nearestHit.collision) {
-    //    // paint any hit pixel bright red
-    //    int base = idx * 3;
-    //    d_pixels[base + 0] = 255;
-    //    d_pixels[base + 1] = 0;
-    //    d_pixels[base + 2] = 0;
-    //    return;
-    //}
 }
 
