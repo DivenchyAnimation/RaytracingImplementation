@@ -12,8 +12,10 @@ __global__ void fillRedKernel(unsigned char *d_pixels, int numPixels) {
 
 // Beginning of helpers
 HD mat4 buildMVMat(GPUShape *s, mat4 E) {
-    mat4 modelMat = GPUtranslate(mat4(), s->position);
-    modelMat = E * modelMat;
+    mat4 modelMat = mat4();
+    modelMat = GPUtranslate(modelMat, s->position);
+    modelMat = GPUscale(modelMat, s->scale);
+    modelMat = modelMat * E;
 
     return modelMat;
 }
@@ -48,6 +50,7 @@ HD bool isInShadow(GPUHit &nearestHit, const GPULight &light, GPUShape **shapes,
 }
 
 HD vec3 KernelCalcLightContribution(const GPULight &light, GPUHit &nearestHit, GPURay &ray, GPUShape **shapes, int nShapes, mat4 &E) {
+
     bool isOccluded = isInShadow(nearestHit, light, shapes, nShapes, E);
 
     // For now, use binary shadowing.
@@ -80,7 +83,9 @@ HD GPURay GPUGenRayForPixel(int x, int y, int width, int height, GPUCamera *cam)
     // Help from ChatGPT
     // Map pixel (x,y) to norm coords
     float u = (((x + 0.5f) / width) * 2.0f - 1.0f) * tanX;
-    float v = (((y + 0.5f) / height) * 2.0f - 1.0f) * tanY;
+    //float v = (((y + 0.5f) / height) * 2.0f - 1.0f) * tanY;
+    float v = (1.0f - ((y + 0.5f) / height) * 2.0f) * tanY;
+
 
     vec3 camPos = cam->getPosition();
     vec3 forward = GPUnormalize(cam->getTarget() - camPos);
@@ -142,7 +147,7 @@ HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShap
         // offset origin to avoid self-reflection
         vec3 origin = nearestHit.x + N * 0.001f;
         GPURay reflectRay(origin, R);
-        vec3 reflCol = GPUTraceRay(reflectRay, nearestHit, shapes, nShapes, lights, nLights, depth, E);
+        vec3 reflCol = GPUTraceRay(reflectRay, nearestHit, shapes, nShapes, lights, nLights, depth-1, E);
         // blend: local*(1-kr) + reflection*kr
         finalColor = GPUMix(finalColor, reflCol, kr);
     }
@@ -157,16 +162,13 @@ __global__ void KernelGenScenePixels(unsigned char *d_pixels, int numPixels, int
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= numPixels) return;
 
+    // Flip y when writing to device pixels
     int x = idx % width;
     int y = idx / width;
 
     GPURay ray = GPUGenRayForPixel(x, y, width, height, cam);
     GPUHit nearestHit;
 
-    if (idx == 0) {
-        printf("rayOrigin = (%f, %f, %f)\n", ray.rayOrigin.x, ray.rayOrigin.y, ray.rayOrigin.z);
-        printf("rayDir    = (%f, %f, %f)\n", ray.rayDirection.x, ray.rayDirection.y, ray.rayDirection.z);
-    }
     int depth;
     if (SCENE == 4) {
         depth = 2;
@@ -175,9 +177,6 @@ __global__ void KernelGenScenePixels(unsigned char *d_pixels, int numPixels, int
         depth = 5;
     }
     vec3 finalColor = GPUTraceRay(ray, nearestHit, shapes, nShapes, lights, nLights, depth, E);
-    if (idx == 0) {
-        printf("finalCOlor: %f, %f, %f\n", finalColor.x, finalColor.y, finalColor.z);
-    }
 
     // Clamp vals to 0 to 1 to get percent val 0 - 255
     d_pixels[3 * idx + 0] = (unsigned char)(GPUClampf(finalColor.x) * 255);

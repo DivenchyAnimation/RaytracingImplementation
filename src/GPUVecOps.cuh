@@ -174,6 +174,13 @@ HD inline vec3 GPUcross(const vec3 &a, const vec3 &b) {
 // vec4 operations
 
 // mat3 operations
+HD inline vec3 operator*(const mat3 &m, const vec3 &v) {
+	return vec3(
+		m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
+		m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
+		m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z
+	);
+}
 
 // mat4 operations
 // Help from ChatGPT for this
@@ -184,6 +191,35 @@ HD inline mat4 GPUtranspose(const mat4 &m) {
 			r[i][j] = m[j][i];
 		}
 	}
+	return r;
+}
+
+// extract the 3×3 linear part of a 4×4
+HD inline mat3 mat3_from_mat4(const mat4 &M) {
+	return mat3(
+		// each vec3 is a ROW of the mat3
+		vec3(M[0][0], M[0][1], M[0][2]),
+		vec3(M[1][0], M[1][1], M[1][2]),
+		vec3(M[2][0], M[2][1], M[2][2])
+	);
+}
+
+// Help with chatgpt with this
+HD inline mat3 GPUtoMat3AndTranspose(const mat4 &m) {
+	mat3 r = mat3_from_mat4(m);
+	for (int i = 0; i < 3; ++i)
+		for (int j = 0; j < 3; ++j)
+			r[i][j] = m[j][i];
+	return r;
+}
+
+
+// transpose a mat3
+HD inline mat3 GPUtranspose(const mat3 &m) {
+	mat3 r;
+	for (int i = 0; i < 3; ++i)
+		for (int j = 0; j < 3; ++j)
+			r[i][j] = m[j][i];
 	return r;
 }
 
