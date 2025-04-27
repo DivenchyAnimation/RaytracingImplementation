@@ -1,4 +1,5 @@
 #include "HostLauncher.h"
+#include "GPUBoundingSphere.h"
 
 // Define E mat
 
@@ -8,12 +9,7 @@
 //          0    1.4095   -0.5130   -1.5000
 //          0    0.5130    1.4095         0
 //          0         0         0    1.0000
-//mat4 E(
-//	vec4(1.5f, 0.0f, 0.0f, 0.0f), 
-//	vec4(0.0f, 1.4095f, 0.5130, 0.0f), 
-//	vec4(0.0f, -0.5130f, 1.4095f, 0.0f), 
-//	vec4(0.3f, -1.50f, 0.0f, 1.0f));
-//
+
 mat4 IdMat = mat4();
 
 void loadHostShapes(std::vector<GPUShape> &hostShapes, GPUMaterial *materials) {
@@ -223,6 +219,213 @@ void HAsceneReflections(int blocks, int numThreads, unsigned char *&d_pixels, in
 	hostCamera.setTarget(vec3(0.0f)); // Look at origin
 	hostCamera.setFOV(GPUradians(60.0f));
 	hostCamera.worldUp = vec3(0.0f, 1.0f, 0.0f);
+	device_cam = nullptr;
+	cudaMalloc(&device_cam, sizeof(GPUCamera));
+	cudaMemcpy(device_cam, &hostCamera, sizeof(GPUCamera), cudaMemcpyHostToDevice);
+
+}
+
+
+void HAsceneMesh(std::vector<float> &posBuf, std::vector<float> &norBuf, std::vector<float> &texBuf, int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
+	GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E) {
+
+	// Create materials and allocate memory on device
+	GPUMaterial hostMaterials[6];
+	initMaterials(hostMaterials);
+	device_materials = nullptr;
+	cudaMalloc(&device_materials, 6 * sizeof(GPUMaterial));
+	cudaMemcpy(device_materials, hostMaterials, 6 * sizeof(GPUMaterial), cudaMemcpyHostToDevice);
+
+	// meshmat --> materials[5]
+	GPUBoundingSphere hostBoundSphere(posBuf);
+	GPUBoundingSphere *device_bSphere = nullptr;
+	cudaMalloc(&device_bSphere, sizeof(GPUBoundingSphere));
+	cudaMemcpy(device_bSphere, &hostBoundSphere, sizeof(GPUBoundingSphere), cudaMemcpyHostToDevice);
+
+	// GPU/device buffers
+	float *GPUposBuf = nullptr;
+	float *GPUnorBuf = nullptr;
+	float *GPUtexBuf = nullptr;
+	cudaMalloc(&GPUposBuf, posBuf.size() * sizeof(float));
+	cudaMemcpy(GPUposBuf, posBuf.data(), posBuf.size() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&GPUnorBuf, norBuf.size() * sizeof(float));
+	cudaMemcpy(GPUnorBuf, norBuf.data(), norBuf.size() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&GPUtexBuf, texBuf.size() * sizeof(float));
+	cudaMemcpy(GPUtexBuf, texBuf.data(), texBuf.size() * sizeof(float), cudaMemcpyHostToDevice);
+
+	// Create device friendly mesh shape
+	std::vector<GPUShape> hostShapes;
+	GPUShape mesh = GPUShape(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f), vec3(1.0f), 0.0f, hostMaterials[5], false);
+	mesh.type = GPUShapeType::MESH;
+	mesh.data.MESH.bSphere = device_bSphere;
+	mesh.data.MESH.GPUposBuf = GPUposBuf;
+	mesh.data.MESH.posBufSize = posBuf.size();
+	mesh.data.MESH.GPUnorBuf = GPUnorBuf;
+	mesh.data.MESH.norBufSize = norBuf.size();
+	mesh.data.MESH.GPUtexBuf = GPUtexBuf;
+	mesh.data.MESH.texBufSize = texBuf.size();
+	hostShapes.push_back(mesh);
+	nShapes = hostShapes.size();
+	device_shapes = nullptr;
+	cudaMalloc(&device_shapes, hostShapes.size() * sizeof(GPUShape));
+	cudaMemcpy(device_shapes, hostShapes.data(), hostShapes.size() * sizeof(GPUShape), cudaMemcpyHostToDevice);
+
+	// Array of pointers
+	std::vector<GPUShape *> hostShapesPtrs(hostShapes.size());
+	for (size_t i = 0; i < hostShapes.size(); i++) {
+		hostShapesPtrs[i] = device_shapes + i;
+	}
+	// Copy to device
+	device_shapesPtrs = nullptr;
+	cudaMalloc(&device_shapesPtrs, hostShapesPtrs.size() * sizeof(GPUShape *));
+	cudaMemcpy(device_shapesPtrs, hostShapesPtrs.data(), hostShapesPtrs.size() * sizeof(GPUShape *), cudaMemcpyHostToDevice);
+
+	// Create device friendly world light, one in this case and allocate memory on device
+	std::vector<GPULight> hostLights;
+	GPULight worldLight(vec3(-1.0f, 1.0f, 1.0f), vec3(1.0f), 1.0f);
+	hostLights.push_back(worldLight);
+	nLights = hostLights.size();
+	device_lights = nullptr;
+	cudaMalloc(&device_lights, hostLights.size() * sizeof(GPULight));
+	cudaMemcpy(device_lights, hostLights.data(), hostLights.size() * sizeof(GPULight), cudaMemcpyHostToDevice);
+
+	// Create device friendly camera, and to device friendly structs
+	GPUCamera hostCamera;
+	hostCamera.position = (vec3(0.0f, 0.0f, 5.0f));
+	hostCamera.setTarget(vec3(0.0f)); // Look at origin
+	hostCamera.setFOV(GPUradians(60.0f));
+	hostCamera.worldUp = vec3(0.0f, 1.0f, 0.0f);
+	device_cam = nullptr;
+	cudaMalloc(&device_cam, sizeof(GPUCamera));
+	cudaMemcpy(device_cam, &hostCamera, sizeof(GPUCamera), cudaMemcpyHostToDevice);
+};
+
+void HAsceneMeshTransform(std::vector<float> &posBuf, std::vector<float> &norBuf, std::vector<float> &texBuf, int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
+	GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E) {
+
+	// Create materials and allocate memory on device
+	GPUMaterial hostMaterials[6];
+	initMaterials(hostMaterials);
+	device_materials = nullptr;
+	cudaMalloc(&device_materials, 6 * sizeof(GPUMaterial));
+	cudaMemcpy(device_materials, hostMaterials, 6 * sizeof(GPUMaterial), cudaMemcpyHostToDevice);
+
+	// meshmat --> materials[5]
+	GPUBoundingSphere hostBoundSphere(posBuf);
+	GPUBoundingSphere *device_bSphere = nullptr;
+	cudaMalloc(&device_bSphere, sizeof(GPUBoundingSphere));
+	cudaMemcpy(device_bSphere, &hostBoundSphere, sizeof(GPUBoundingSphere), cudaMemcpyHostToDevice);
+
+	// GPU/device buffers
+	float *GPUposBuf = nullptr;
+	float *GPUnorBuf = nullptr;
+	float *GPUtexBuf = nullptr;
+	cudaMalloc(&GPUposBuf, posBuf.size() * sizeof(float));
+	cudaMemcpy(GPUposBuf, posBuf.data(), posBuf.size() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&GPUnorBuf, norBuf.size() * sizeof(float));
+	cudaMemcpy(GPUnorBuf, norBuf.data(), norBuf.size() * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMalloc(&GPUtexBuf, texBuf.size() * sizeof(float));
+	cudaMemcpy(GPUtexBuf, texBuf.data(), texBuf.size() * sizeof(float), cudaMemcpyHostToDevice);
+
+	// Create device friendly mesh shape
+	std::vector<GPUShape> hostShapes;
+	GPUShape mesh = GPUShape(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f), vec3(1.0f), 0.0f, hostMaterials[5], false);
+	mesh.type = GPUShapeType::MESH;
+	mesh.data.MESH.bSphere = device_bSphere;
+	mesh.data.MESH.GPUposBuf = GPUposBuf;
+	mesh.data.MESH.posBufSize = posBuf.size();
+	mesh.data.MESH.GPUnorBuf = GPUnorBuf;
+	mesh.data.MESH.norBufSize = norBuf.size();
+	mesh.data.MESH.GPUtexBuf = GPUtexBuf;
+	mesh.data.MESH.texBufSize = texBuf.size();
+	hostShapes.push_back(mesh);
+	nShapes = hostShapes.size();
+	device_shapes = nullptr;
+	cudaMalloc(&device_shapes, hostShapes.size() * sizeof(GPUShape));
+	cudaMemcpy(device_shapes, hostShapes.data(), hostShapes.size() * sizeof(GPUShape), cudaMemcpyHostToDevice);
+
+	// Array of pointers
+	std::vector<GPUShape *> hostShapesPtrs(hostShapes.size());
+	for (size_t i = 0; i < hostShapes.size(); i++) {
+		hostShapesPtrs[i] = device_shapes + i;
+	}
+	// Copy to device
+	device_shapesPtrs = nullptr;
+	cudaMalloc(&device_shapesPtrs, hostShapesPtrs.size() * sizeof(GPUShape *));
+	cudaMemcpy(device_shapesPtrs, hostShapesPtrs.data(), hostShapesPtrs.size() * sizeof(GPUShape *), cudaMemcpyHostToDevice);
+
+	// Create device friendly world light, one in this case and allocate memory on device
+	std::vector<GPULight> hostLights;
+	GPULight worldLight(vec3(-1.0f, 1.0f, 1.0f), vec3(1.0f), 1.0f);
+	hostLights.push_back(worldLight);
+	nLights = hostLights.size();
+	device_lights = nullptr;
+	cudaMalloc(&device_lights, hostLights.size() * sizeof(GPULight));
+	cudaMemcpy(device_lights, hostLights.data(), hostLights.size() * sizeof(GPULight), cudaMemcpyHostToDevice);
+
+	// Create device friendly camera, and to device friendly structs
+	GPUCamera hostCamera;
+	hostCamera.position = (vec3(0.0f, 0.0f, 5.0f));
+	hostCamera.setTarget(vec3(0.0f)); // Look at origin
+	hostCamera.setFOV(GPUradians(60.0f));
+	hostCamera.worldUp = vec3(0.0f, 1.0f, 0.0f);
+	device_cam = nullptr;
+	cudaMalloc(&device_cam, sizeof(GPUCamera));
+	cudaMemcpy(device_cam, &hostCamera, sizeof(GPUCamera), cudaMemcpyHostToDevice);
+	mat4 E_(vec4(1.5f, 0.0f, 0.0f, 0.0f), 
+			vec4(0.0f, 1.4095f, 0.5130, 0.0f), 
+			vec4(0.0f, -0.5130f, 1.4095f, 0.0f), 
+			vec4(0.3f, -1.50f, 0.0f, 1.0f));
+	E = E_;
+};
+
+void HAsceneCameraTransform(int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
+	GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E) {
+	std::vector<GPUShape> hostShapes;
+	std::vector<GPULight> hostLights;
+
+	// Create materials and allocate memory on device
+	GPUMaterial hostMaterials[6];
+	initMaterials(hostMaterials);
+	device_materials = nullptr;
+	cudaMalloc(&device_materials, 6 * sizeof(GPUMaterial));
+	cudaMemcpy(device_materials, hostMaterials, 6 * sizeof(GPUMaterial), cudaMemcpyHostToDevice);
+
+	// Create shape device memory
+	loadHostShapes(hostShapes, hostMaterials);
+	nShapes = hostShapes.size();
+	device_shapes = nullptr;
+	cudaMalloc(&device_shapes, hostShapes.size() * sizeof(GPUShape));
+	cudaMemcpy(device_shapes, hostShapes.data(), hostShapes.size() * sizeof(GPUShape), cudaMemcpyHostToDevice);
+
+	// Array of pointers
+	std::vector<GPUShape *> hostShapesPtrs(hostShapes.size());
+	for (size_t i = 0; i < hostShapes.size(); i++) {
+		hostShapesPtrs[i] = device_shapes + i;
+	}
+	// Copy to device
+	device_shapesPtrs = nullptr;
+	cudaMalloc(&device_shapesPtrs, hostShapesPtrs.size() * sizeof(GPUShape *));
+	cudaMemcpy(device_shapesPtrs, hostShapesPtrs.data(), hostShapesPtrs.size() * sizeof(GPUShape *), cudaMemcpyHostToDevice);
+
+	// Create device friendly world light, one in this case and allocate memory on device
+	GPULight worldLight = GPULight(vec3(-2.0f, 1.0f, 1.0f), vec3(1.0f), 1.0f);
+	hostLights.push_back(worldLight);
+	nLights = hostLights.size();
+	device_lights = nullptr;
+	cudaMalloc(&device_lights, hostLights.size() * sizeof(GPULight));
+	cudaMemcpy(device_lights, hostLights.data(), hostLights.size() * sizeof(GPULight), cudaMemcpyHostToDevice);
+
+	// Create device friendly camera, and to device friendly structs
+	GPUCamera hostCamera;
+	hostCamera.position = (vec3(0.0f, 0.0f, 5.0f));
+	hostCamera.setTarget(vec3(0.0f)); // Look at origin
+	hostCamera.setFOV(GPUradians(60.0f));
+	hostCamera.worldUp = vec3(0.0f, 1.0f, 0.0f);
+	// Camera transforms
+	hostCamera.translateCamera(vec3(-3.0f, 0.0f, -5.0f));
+	hostCamera.setFOV(GPUradians(60.0f));
+	hostCamera.setTarget(vec3(0.0f, 0.0f, 0.0f)); // Look at origin
 	device_cam = nullptr;
 	cudaMalloc(&device_cam, sizeof(GPUCamera));
 	cudaMemcpy(device_cam, &hostCamera, sizeof(GPUCamera), cudaMemcpyHostToDevice);

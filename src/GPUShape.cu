@@ -1,5 +1,6 @@
 #include "GPUShape.h"
 #include <math.h>
+#include "GPUraytri.h"
 
 HD GPUHit intersectionSphere(const GPUShape *s, const GPURay &ray, const mat4 &modelMat, const mat4 &modelMatInv, GPUHit &hit) {
 	// Rays are real, local orig and dir are real
@@ -32,15 +33,16 @@ HD GPUHit intersectionSphere(const GPUShape *s, const GPURay &ray, const mat4 &m
 	}
 
 	// Else, colllision so solve for t (intersections)
+	float e = 1e-3;
 	float sqrtDiscriminant = GPUsqrtf(discriminant);
 	float t = (-b - sqrtDiscriminant) / (2.0f * a);
 
 	// Behind camera, count as miss look at other t val
-	if (t < 0) {
+	if (t < e) {
 		t = (-b + sqrtDiscriminant) / (2.0f * a);
 	}
 	// If both neg, skip
-	if (t < 0) {
+	if (t < e) {
 		return hit;
 	}
 
@@ -172,6 +174,72 @@ HD GPUHit intersectionPlane(const GPUShape *s, const GPURay &ray, const mat4 &mo
 
 }
 
+HD GPUHit intersectionMesh(const GPUShape *s, const GPURay &ray, const mat4 &modelMat, const mat4 &modelMatInv, GPUHit &hit) {
+  // Help from ChatGPT making this model to object space transformation
+  // Transform ray origin into local space (use homogeneous coordinate 1)
+  vec3 rayLocalOrigin = vec3(modelMatInv * vec4(ray.rayOrigin, 1.0f));
+
+  // Transform ray direction into local space (use homogeneous coordinate 0)
+  vec4 tmp = modelMatInv * vec4(ray.rayDirection, 0.0f);
+  vec3 rayLocalDirection = GPUnormalize(vec3(tmp.x, tmp.y, tmp.z));
+  //vec3 localDirection = GPUnormalize(vec3(modelMatInv * vec4(ray.rayDirection, 0.0f)));  <<--- this old version div by 0 therefore garbage
+
+  GPURay localRay(rayLocalOrigin, rayLocalDirection);
+
+  // Ray intersection test
+  float t_bounding;
+  if (!s->data.MESH.bSphere->GPUBoundingSphereIntersect(localRay, 0.001f, std::numeric_limits<float>::max(), t_bounding)) {
+    return hit; // Misses the bunny
+  }
+
+  // Help from ChatGPT
+  // Loop over the triangles
+  float T = std::numeric_limits<float>::infinity();
+  float U = 0, V = 0;
+  size_t bestTri = size_t(-1);
+  for (size_t i = 0; i < s->data.MESH.posBufSize; i += 9) {
+    double orig[3] = {double(localRay.rayOrigin.x), double(localRay.rayOrigin.y), double(localRay.rayOrigin.z)};
+    double dir[3] = {double(localRay.rayDirection.x), double(localRay.rayDirection.y), double(localRay.rayDirection.z)};
+    double v0[3] = {s->data.MESH.GPUposBuf[i + 0], s->data.MESH.GPUposBuf[i + 1], s->data.MESH.GPUposBuf[i + 2]};
+    double v1[3] = {s->data.MESH.GPUposBuf[i + 3], s->data.MESH.GPUposBuf[i + 4], s->data.MESH.GPUposBuf[i + 5]};
+    double v2[3] = {s->data.MESH.GPUposBuf[i + 6], s->data.MESH.GPUposBuf[i + 7], s->data.MESH.GPUposBuf[i + 8]};
+    double t, u, v;
+    // Use the optimizer codes for triange ray intersections
+    if (GPUintersect_triangle(orig, dir, v0, v1, v2, &t, &u, &v) && t > 0 && t < T) {
+      T = float(t);
+      U = float(u);
+      V = float(v);
+      bestTri = i / 9;
+    }
+  }
+
+  // If after looping no triangle was hit
+  if (bestTri == size_t(-1)) {
+    return hit;
+  }
+
+  // Hit found
+  vec3 P = localRay.rayOrigin + localRay.rayDirection * T; // local
+  size_t idx = bestTri * 9;
+  // Interpolate normal (local)
+  vec3 n0(s->data.MESH.GPUnorBuf[idx + 0], s->data.MESH.GPUnorBuf[idx + 1], s->data.MESH.GPUnorBuf[idx + 2]), n1(s->data.MESH.GPUnorBuf[idx + 3], s->data.MESH.GPUnorBuf[idx + 4], s->data.MESH.GPUnorBuf[idx + 5]),
+      n2(s->data.MESH.GPUnorBuf[idx + 6], s->data.MESH.GPUnorBuf[idx + 7], s->data.MESH.GPUnorBuf[idx + 8]);
+  vec3 N = GPUnormalize(n0 * (1 - U - V) + n1 * U + n2 * V); // local
+  // now in world space
+  vec4 P_w = modelMat * vec4(P, 1.0f);
+  P = vec3(P_w / P_w.w);                                     // world
+  mat3 invTrans3 = GPUtoMat3AndTranspose(modelMatInv);
+  vec3 worldNormal = GPUnormalize(invTrans3 * N);
+  N = worldNormal; // world
+
+  hit.collision = true;
+  hit.t = GPUlength(P - ray.rayOrigin);
+  hit.x = P;
+  hit.n = N;
+  return hit;
+
+};
+
 HD GPUHit computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 &modelMat, const mat4 &modelMatInv) {
 	GPUHit hit;
 	hit.collision = false;
@@ -188,7 +256,10 @@ HD GPUHit computeIntersection(const GPUShape *s, const GPURay &ray, const mat4 &
 		intersectionPlane(s, ray, modelMat, modelMatInv, hit);
 		break;
 	}
+	case GPUShapeType::MESH: {
+		intersectionMesh(s, ray, modelMat, modelMatInv, hit);
+		break;
 	}
-
+	}
 	return hit;
 };

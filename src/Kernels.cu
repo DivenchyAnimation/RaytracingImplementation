@@ -14,8 +14,8 @@ __global__ void fillRedKernel(unsigned char *d_pixels, int numPixels) {
 HD mat4 buildMVMat(GPUShape *s, mat4 E) {
     mat4 modelMat = mat4();
     modelMat = GPUtranslate(modelMat, s->position);
-    modelMat = GPUrotate(modelMat, GPUradians(s->rotationAngle), s->rotation);
-    modelMat = GPUscale(modelMat, s->scale);
+    ////modelMat = GPUrotate(modelMat, GPUradians(s->rotationAngle), s->rotation);
+    //modelMat = GPUscale(modelMat, s->scale);
     modelMat = modelMat * E;
 
     return modelMat;
@@ -98,7 +98,12 @@ HD GPURay GPUGenRayForPixel(int x, int y, int width, int height, GPUCamera *cam)
     return GPURay(camPos, rayDirWorld);
 }
 
-HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShapes, GPULight *lights, int nLights, int depth, mat4 &E) {
+HD vec3 GPUTraceRay(GPURay ray, GPUShape **shapes, int nShapes, GPULight *lights, int nLights, int depth, mat4 &E) {
+    
+    GPUHit nearestHit;
+    nearestHit.collision = false;
+    nearestHit.t = GPU_MAX_FLT();
+    nearestHit.collisionShape = nullptr;
     // No more bounces
     if (depth <= 0) {
         return vec3(0.0f);
@@ -148,7 +153,7 @@ HD vec3 GPUTraceRay(GPURay ray, GPUHit &nearestHit, GPUShape **shapes, int nShap
         // offset origin to avoid self-reflection
         vec3 origin = nearestHit.x + N * 0.001f;
         GPURay reflectRay(origin, R);
-        vec3 reflCol = GPUTraceRay(reflectRay, nearestHit, shapes, nShapes, lights, nLights, depth-1, E);
+        vec3 reflCol = GPUTraceRay(reflectRay, shapes, nShapes, lights, nLights, depth-1, E);
         // blend: local*(1-kr) + reflection*kr
         finalColor = GPUMix(finalColor, reflCol, kr);
     }
@@ -177,7 +182,7 @@ __global__ void KernelGenScenePixels(unsigned char *d_pixels, int numPixels, int
     else {
         depth = 5;
     }
-    vec3 finalColor = GPUTraceRay(ray, nearestHit, shapes, nShapes, lights, nLights, depth, E);
+    vec3 finalColor = GPUTraceRay(ray, shapes, nShapes, lights, nLights, depth, E);
 
     // Clamp vals to 0 to 1 to get percent val 0 - 255
     d_pixels[3 * idx + 0] = (unsigned char)(GPUClampf(finalColor.x) * 255);

@@ -21,11 +21,11 @@ void HAsceneThree(int blocks, int numThreads, unsigned char *&d_pixels, int numP
 void HAsceneReflections(int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
     GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E);
 
-void sceneMesh(int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
+void HAsceneMesh(std::vector<float> &posBuf, std::vector<float> &norBuf, std::vector<float> &texBuf, int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
     GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E);
 
-void sceneMeshTransform(int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
+void HAsceneMeshTransform(std::vector<float> &posBuf, std::vector<float> &norBuf, std::vector<float> &texBuf, int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
     GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E);
 
-void sceneCameraTransform(int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
+void HAsceneCameraTransform(int blocks, int numThreads, unsigned char *&d_pixels, int numPixels, int width, int height, GPUMaterial *&device_materials, GPUMaterial *&materials,
     GPUShape *&device_shapes, GPUShape **&device_shapesPtrs, int &nShapes, GPULight *&device_lights, int &nLights, GPUCamera *&device_cam, mat4 &E);

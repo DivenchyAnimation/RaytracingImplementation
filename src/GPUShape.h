@@ -1,8 +1,9 @@
 #pragma once
 #include "pch.cuh"
+#include "GPUBoundingSphere.h"
 
 // Virtual is illegal on the device
-enum GPUShapeType : int { SPHERE, ELLIPSOID, CUBE, CYLINDER, PLANE };
+enum GPUShapeType : int { SPHERE, ELLIPSOID, MESH, PLANE };
 
 union ShapeData {
 	HD ShapeData() {};
@@ -10,6 +11,7 @@ union ShapeData {
 	struct { float radius; } SPHERE;
 	struct { float radius; } ELLIPSOID;
 	struct { vec3 normal; } PLANE;
+	struct { float *GPUposBuf; float *GPUnorBuf; float *GPUtexBuf; int posBufSize; int norBufSize; int texBufSize; GPUBoundingSphere *bSphere; } MESH;
 };
 
 struct GPUMaterial;

@@ -40,7 +40,7 @@ struct vec4 {
 	HD vec4(vec3 vec, float w) : x(vec.x), y(vec.y), z(vec.z), w(w) {};
 	HD vec4 operator+(const vec4 &rh) { return vec4(this->x + rh.x, this->y + rh.y, this->z + rh.z, this->w + rh.w); };
 	HD vec4 operator/(const float &rh) { return vec4(this->x / rh, this->y / rh, this->z / rh, this->w / rh); };
-	HD vec4 operator*(const float &rh) { return vec4(this->x * rh, this->y * rh, this->z * rh, this->w /rh); };
+	HD vec4 operator*(const float &rh) { return vec4(this->x * rh, this->y * rh, this->z * rh, this->w * rh); };
 
 	HD explicit operator vec3() const {
 		return vec3(x / w, y / w, z / w);
@@ -128,7 +128,7 @@ struct mat4 {
 	HD mat4& operator+=(const vec3 &vec) {
 		matrix[0][3] += vec.x;
 		matrix[1][3] += vec.y;
-		matrix[1][3] += vec.z;
+		matrix[2][3] += vec.z;
 		return *this;
 	}
 
@@ -181,6 +181,7 @@ HD inline vec3 operator*(const mat3 &m, const vec3 &v) {
 		m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z
 	);
 }
+
 
 // mat4 operations
 // Help from ChatGPT for this
@@ -253,7 +254,7 @@ HD inline mat4 GPUtranslate(const mat4 &M, const vec3 &t) {
 	T[0][3] = t.x;   
 	T[1][3] = t.y;  
 	T[2][3] = t.z;     
-	return M * T;      
+	return T * M;      
 }
 
 HD inline mat4 GPUscale(const mat4 &M, const vec3 &s) {
@@ -262,7 +263,7 @@ HD inline mat4 GPUscale(const mat4 &M, const vec3 &s) {
 	S[1][1] = s.y;     // scale Y
 	S[2][2] = s.z;     // scale Z
 	// S[3][3] is already 1 from the ctor
-	return M * S;      // your mat4×mat4 operator
+	return S * M;      // your mat4×mat4 operator
 }
 
 // Provided by ChatGPT
