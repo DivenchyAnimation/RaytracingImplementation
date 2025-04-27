@@ -337,3 +337,27 @@ HD inline vec3 GPUMix(const vec3 &x, const vec3 &y, float alpha) { return x * (1
 HD inline float GPUClampf(float a, float minVal, float maxVal) { return GPUMin(GPUMax(a, minVal), maxVal); };
 HD inline float GPUClampf(const float a) { return GPUClampf(a, 0.0f, 1.0f); }; // 0 to 1 range clamp
 
+// Thanks ChatGPT
+HD inline mat4 GPUrotate(const mat4 &M,
+	float    angle,
+	const vec3 &axis)
+{
+	vec3 a = GPUnormalize(const_cast<vec3 &>(axis));
+
+	float x = a.x, y = a.y, z = a.z;
+	float c = cosf(angle);
+	float s = sinf(angle);
+	float t = 1.0f - c;
+
+	mat4 R(
+		// column 0
+		vec4(t * x * x + c, t * x * y + s * z, t * x * z - s * y, 0.0f),
+		// column 1
+		vec4(t * x * y - s * z, t * y * y + c, t * y * z + s * x, 0.0f),
+		// column 2
+		vec4(t * x * z + s * y, t * y * z - s * x, t * z * z + c, 0.0f),
+		// column 3
+		vec4(0.0f, 0.0f, 0.0f, 1.0f)
+	);
+	return M * R;
+}

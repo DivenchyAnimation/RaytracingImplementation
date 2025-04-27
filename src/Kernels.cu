@@ -14,6 +14,7 @@ __global__ void fillRedKernel(unsigned char *d_pixels, int numPixels) {
 HD mat4 buildMVMat(GPUShape *s, mat4 E) {
     mat4 modelMat = mat4();
     modelMat = GPUtranslate(modelMat, s->position);
+    modelMat = GPUrotate(modelMat, GPUradians(s->rotationAngle), s->rotation);
     modelMat = GPUscale(modelMat, s->scale);
     modelMat = modelMat * E;
 

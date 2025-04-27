@@ -51,15 +51,10 @@ void loadHostShapesReflections(std::vector<GPUShape> &hostShapes, GPUMaterial *m
   blueSphere.data.SPHERE.radius = 1.0f;
   GPUShape floor = GPUShape(vec3(0.0f, -1.0f, 0.0f), vec3(0.0f), vec3(1.0f), 0.0f, materials[3], false);
   floor.type = GPUShapeType::PLANE;
-  floor.data.PLANE.normal = vec3(0.0f, -1.0f, 0.0f);
-  floor.rotation = vec3(1.0f, 0.0f, 0.0f);
-  floor.rotationAngle = 90.0f;
+  floor.data.PLANE.normal = vec3(0.0f, 1.0f, 0.0f);
   GPUShape wall = GPUShape(vec3(0.0f, 0.0f, -3.0f), vec3(0.0f), vec3(1.0f), 0.0f, materials[3], false);
   wall.type = GPUShapeType::PLANE;
-  // Rotate wall
-  wall.data.PLANE.normal = vec3(0.0f, 1.0f, 0.0f);
-  wall.rotation = vec3(1.0f, 0.0f, 0.0f);
-  wall.rotationAngle = 90.0f;
+  wall.data.PLANE.normal = vec3(0.0f, 0.0f, 1.0f);
   GPUShape reflSphere = GPUShape(vec3(-0.5f, 0.0f, -0.5f), vec3(0.0f), vec3(1.0f), 0.0f, materials[4], true);
   reflSphere.data.SPHERE.radius = 1.0f;
   GPUShape reflSphereTwo = GPUShape(vec3(1.5f, 0.0f, -1.5f), vec3(0.0f), vec3(1.0f), 0.0f, materials[4], true);

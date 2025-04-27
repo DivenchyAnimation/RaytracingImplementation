@@ -59,7 +59,7 @@ int main(int arc, char** argv) {
 		HAsceneReflections(blocks, numThreads, d_pixels, numPixels, width, height, device_materials, materials, device_shapes, device_shapesPtrs, nShapes, device_lights, nLights, device_cam, IdMat);
 	};
 	}
-	KernelGenScenePixels <<<blocks, numThreads >>> (d_pixels, numPixels, width, height, device_cam, device_shapesPtrs, nShapes, device_lights, nLights, 1, IdMat);
+	KernelGenScenePixels <<<blocks, numThreads >>> (d_pixels, numPixels, width, height, device_cam, device_shapesPtrs, nShapes, device_lights, nLights, SCENE, IdMat);
 	cudaDeviceSynchronize();
 
 	// 3) Copy back into the Image's vector
